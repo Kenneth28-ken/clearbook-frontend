@@ -185,34 +185,34 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50 flex flex-col items-center">
           <div className="bg-white w-full p-8 shadow-2xl border-t-[12px] border-gray-900 font-mono text-xs text-gray-800 rounded-b-2xl flex flex-col">
              <div className="text-center mb-6">
-                <div className="font-black text-3xl tracking-tighter text-gray-900 uppercase">Clear Book POS</div>
-                <div className="uppercase font-black text-2xl text-gray-900 mt-4 border-y-2 border-gray-100 py-3">
+                <div className="font-black text-4xl tracking-tighter text-gray-900 uppercase mb-4">Clear Book POS</div>
+                <div className="uppercase font-black text-3xl text-gray-900 mt-4 border-y-4 border-gray-900 py-6 leading-tight">
                    {transaction.timestamp.toLocaleDateString()} <br/>
-                   {transaction.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                   {transaction.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </div>
                 {(transaction.customerName || customerName) && (
-                  <div className="mt-6 bg-blue-50 py-3 px-6 rounded-xl text-blue-900 font-black uppercase text-sm border-2 border-blue-200">
+                  <div className="mt-8 bg-blue-600 py-4 px-8 rounded-2xl text-white font-black uppercase text-base shadow-lg">
                      Customer: {transaction.customerName || customerName}
                   </div>
                 )}
              </div>
 
-             <div className="space-y-4 mb-6 border-b border-dashed border-gray-300 pb-8">
+             <div className="space-y-4 mb-6 border-b-2 border-dashed border-gray-400 pb-8 mt-4">
                 {transaction.items.map((item, idx) => (
-                   <div key={idx} className="flex justify-between items-start gap-4 text-base font-black">
+                   <div key={idx} className="flex justify-between items-start gap-4 text-xl font-black">
                       <span className="flex-1">{item.quantity}{item.type === 'WEIGHT' ? 'kg' : 'x'} {item.name}</span>
                       <span className="whitespace-nowrap">{currencySymbol}{(item.price * item.quantity).toFixed(2)}</span>
                    </div>
                 ))}
              </div>
 
-             <div className="bg-gray-900 text-white p-8 rounded-3xl shrink-0 flex justify-between items-center shadow-2xl">
-               <span className="text-sm opacity-50 uppercase tracking-widest font-black">Total Paid</span>
-               <span className="text-5xl font-black tabular-nums">{currencySymbol}{transaction.total.toFixed(2)}</span>
+             <div className="bg-gray-900 text-white p-10 rounded-[2.5rem] shrink-0 flex justify-between items-center shadow-2xl mt-4">
+               <span className="text-base opacity-60 uppercase tracking-widest font-black">Amount Paid</span>
+               <span className="text-6xl font-black tabular-nums">{currencySymbol}{transaction.total.toFixed(2)}</span>
              </div>
 
-             <div className="mt-10 text-center text-2xl text-gray-900 uppercase font-black border-t-2 border-dashed pt-8 tracking-tighter">
-                Thank you for patronizing us!
+             <div className="mt-12 text-center text-4xl text-gray-900 uppercase font-black border-t-4 border-gray-900 pt-10 tracking-tighter leading-none">
+                Thank you for <br/> patronizing us!
              </div>
           </div>
         </div>
@@ -222,7 +222,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
              <button onClick={handlePrint} disabled={isPrinting} className="py-5 rounded-2xl font-black text-xs bg-gray-900 text-white hover:bg-black transition-all uppercase">Thermal Print</button>
              <button onClick={() => setShowWhatsAppInput(true)} className="py-5 bg-green-600 text-white rounded-2xl font-black text-xs hover:bg-green-700 transition-all uppercase">Send WhatsApp</button>
            </div>
-           <button onClick={onClose} className="w-full py-6 bg-blue-600 text-white rounded-[2rem] font-black text-xl hover:bg-blue-500 transition-all uppercase tracking-tight shadow-xl">Next Transaction</button>
+           <button onClick={onClose} className="w-full py-6 bg-blue-600 text-white rounded-[2rem] font-black text-2xl hover:bg-blue-500 transition-all uppercase tracking-tight shadow-2xl">Ready for Next Sale</button>
         </div>
       </div>
 
