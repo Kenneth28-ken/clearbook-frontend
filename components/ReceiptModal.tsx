@@ -63,20 +63,28 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
     setIsPrinting(true);
     if (thermalProxy && thermalProxy.trim() !== '') {
         try {
+          const safePayload = JSON.stringify({
+            id: transaction.id,
+            timestamp: transaction.timestamp,
+            staff: staff?.name || 'Terminal',
+            items: transaction.items,
+            total: transaction.total,
+            currency: currencySymbol,
+            customerName: customerName || transaction.customerName || 'Walk-in',
+            customerPhone: phoneNumber || transaction.customerPhone || 'N/A'
+          }, (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+              if (value.constructor && value.constructor.name === 'DocumentReference') return value.path;
+              if (value.constructor && value.constructor.name === 'Timestamp') return value.toDate().toISOString();
+            }
+            return value;
+          });
+
           await fetch(thermalProxy, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             mode: 'cors',
-            body: JSON.stringify({
-              id: transaction.id,
-              timestamp: transaction.timestamp,
-              staff: staff?.name || 'Terminal',
-              items: transaction.items,
-              total: transaction.total,
-              currency: currencySymbol,
-              customerName: customerName || transaction.customerName || 'Walk-in',
-              customerPhone: phoneNumber || transaction.customerPhone || 'N/A'
-            }),
+            body: safePayload,
           });
           setIsPrinting(false);
           return;

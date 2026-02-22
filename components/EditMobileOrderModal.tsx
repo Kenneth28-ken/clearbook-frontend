@@ -33,11 +33,13 @@ const EditMobileOrderModal: React.FC<EditMobileOrderModalProps> = ({
         i.cartId === existing.cartId ? { ...i, quantity: i.quantity + 1 } : i
       ));
     } else {
+      // Added costPrice property to satisfy the CartItem interface requirement
       const newItem: CartItem = {
         cartId: Math.random().toString(36).substr(2, 9),
         productId: product.id,
         name: product.name,
         price: product.price,
+        costPrice: product.costPrice || 0,
         quantity: 1,
         type: product.type,
         selectedModifiers: [],

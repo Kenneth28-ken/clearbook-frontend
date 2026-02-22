@@ -35,6 +35,7 @@ const CustomerMenuView: React.FC<CustomerMenuViewProps> = ({ products, currencyS
         productId: product.id,
         name: product.name,
         price: product.price,
+        costPrice: product.costPrice || 0,
         quantity: 1,
         type: product.type,
         selectedModifiers: [],

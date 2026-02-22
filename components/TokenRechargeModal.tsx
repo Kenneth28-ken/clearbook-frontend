@@ -14,7 +14,7 @@ const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRech
   const [refillType, setRefillType] = useState<'SALES' | 'WHATSAPP'>('SALES');
   const [error, setError] = useState('');
 
-  const MASTER_KEY = "Incorrect351";
+  const MASTER_KEY = "961996";
   
   // Pricing: Sales = 200 per unit, WhatsApp = 100 per unit
   const unitPrice = refillType === 'SALES' ? 200 : 100;
@@ -22,7 +22,7 @@ const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRech
 
   const handleAuthorize = (e: React.FormEvent) => {
     e.preventDefault();
-    if (masterKey === MASTER_KEY) {
+    if (masterKey.trim().toLowerCase() === MASTER_KEY.toLowerCase()) {
       setIsAuthorized(true);
       setError('');
     } else {
@@ -73,7 +73,7 @@ const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRech
                      autoFocus
                      type="password"
                      placeholder="••••"
-                     className="w-full p-10 bg-gray-50 border-4 border-gray-100 rounded-[3rem] text-7xl font-black text-center outline-none focus:border-blue-600 focus:bg-white transition-all text-gray-900 shadow-inner tracking-[0.5em]"
+                     className="w-full p-8 bg-gray-50 border-4 border-gray-100 rounded-[3rem] text-4xl font-black text-center outline-none focus:border-blue-600 focus:bg-white transition-all text-gray-900 shadow-inner tracking-widest"
                      value={masterKey}
                      onChange={(e) => setMasterKey(e.target.value)}
                    />

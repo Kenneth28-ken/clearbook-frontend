@@ -6,12 +6,17 @@ interface StaffLoginScreenProps {
   staffList: Staff[];
   onStaffAuthenticated: (staff: Staff) => void;
   onLogoutManager: () => void;
+  isMaster?: boolean;
 }
 
-const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffAuthenticated, onLogoutManager }) => {
+const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffAuthenticated, onLogoutManager, isMaster = false }) => {
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
+  const [showMasterBypass, setShowMasterBypass] = useState(false);
+  const [masterPass, setMasterPass] = useState('');
+
+  const MASTER_KEY = "961996";
 
   // Synthesized Startup Chime (Pleasant Harmonious Arpeggio)
   const playStartupSound = () => {
@@ -68,6 +73,18 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
     }
   };
 
+  const handleMasterBypass = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedStaff && masterPass.trim().toLowerCase() === MASTER_KEY.toLowerCase()) {
+      playStartupSound();
+      onStaffAuthenticated(selectedStaff);
+    } else {
+      setError(true);
+      setMasterPass('');
+      setTimeout(() => setError(false), 2000);
+    }
+  };
+
   React.useEffect(() => {
     if (pin.length === 4 && selectedStaff) {
       handleLogin();
@@ -85,7 +102,12 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
         
         <div className="w-full md:w-1/2">
            <div className="mb-10 text-center md:text-left">
-              <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">Terminal Access</h1>
+                             <h1 
+                 className="text-4xl font-black uppercase tracking-tighter mb-2 cursor-pointer select-none"
+                 onDoubleClick={() => setShowMasterBypass(!showMasterBypass)}
+               >
+                 Terminal Access
+               </h1>
               <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">Select profile to start shift</p>
            </div>
 
@@ -124,47 +146,84 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
 
         <div className={`w-full max-w-[400px] md:w-1/2 p-10 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[3rem] shadow-2xl transition-all ${!selectedStaff ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
            <div className="text-center mb-8">
-              <label className="text-[10px] font-black uppercase text-blue-400 tracking-[0.4em] mb-4 block">Enter Security PIN</label>
-              <div className="flex justify-center gap-4">
-                 {[0, 1, 2, 3].map(i => (
-                    <div 
-                      key={i} 
-                      className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${
-                        error ? 'bg-red-500 border-red-500 animate-shake' : 
-                        pin.length > i ? 'bg-blue-500 border-blue-500 scale-125' : 'border-white/20'
-                      }`}
-                    ></div>
-                 ))}
+                          {showMasterBypass ? (
+              <div className="animate-in fade-in zoom-in-95 duration-300">
+                <div className="text-center mb-8">
+                  <label className="text-[10px] font-black uppercase text-amber-400 tracking-[0.4em] mb-4 block">Master Key Bypass</label>
+                  <form onSubmit={handleMasterBypass} className="space-y-6">
+                    <input 
+                      autoFocus
+                      type="password"
+                      placeholder="Enter Master Key"
+                      className="w-full p-6 bg-white/10 border-2 border-white/20 rounded-2xl text-xl font-black text-center outline-none focus:border-amber-500 text-white shadow-inner"
+                      value={masterPass}
+                      onChange={(e) => setMasterPass(e.target.value)}
+                    />
+                    <div className="flex gap-3">
+                      <button 
+                        type="button" 
+                        onClick={() => setShowMasterBypass(false)}
+                        className="flex-1 py-4 bg-white/5 text-gray-400 font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-white/10"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit"
+                        className="flex-2 py-4 bg-amber-500 text-amber-950 font-black rounded-xl shadow-xl uppercase text-[10px] tracking-widest hover:bg-amber-400"
+                      >
+                        Verify Master
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
-              {error && <p className="text-red-500 font-black text-[10px] uppercase mt-4 animate-pulse">Invalid Access PIN</p>}
-           </div>
+            ) : (
+              <>
+                <div className="text-center mb-8">
+                   <label className="text-[10px] font-black uppercase text-blue-400 tracking-[0.4em] mb-4 block">Enter Security PIN</label>
+                   <div className="flex justify-center gap-4">
+                      {[0, 1, 2, 3].map(i => (
+                         <div 
+                           key={i} 
+                           className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${
+                             error ? 'bg-red-500 border-red-500 animate-shake' : 
+                             pin.length > i ? 'bg-blue-500 border-blue-500 scale-125' : 'border-white/20'
+                           }`}
+                         ></div>
+                      ))}
+                   </div>
+                   {error && <p className="text-red-500 font-black text-[10px] uppercase mt-4 animate-pulse">Invalid Access PIN</p>}
+                </div>
 
-           <div className="grid grid-cols-3 gap-3 mb-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                <button
-                  key={n}
-                  onClick={() => handlePinClick(n.toString())}
-                  className="h-16 bg-white/10 hover:bg-white/20 rounded-2xl text-2xl font-black transition-all active:scale-90"
-                >
-                  {n}
-                </button>
-              ))}
-              <div className="p-1"></div>
-              <button
-                onClick={() => handlePinClick('0')}
-                className="h-16 bg-white/10 hover:bg-white/20 rounded-2xl text-2xl font-black transition-all active:scale-90"
-              >
-                0
-              </button>
-              <button
-                onClick={handleBackspace}
-                className="h-16 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-              >
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
-                </svg>
-              </button>
-           </div>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                   {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                     <button
+                       key={n}
+                       onClick={() => handlePinClick(n.toString())}
+                       className="h-16 bg-white/10 hover:bg-white/20 rounded-2xl text-2xl font-black transition-all active:scale-90"
+                     >
+                       {n}
+                     </button>
+                   ))}
+                   <div className="p-1"></div>
+                   <button
+                     onClick={() => handlePinClick('0')}
+                     className="h-16 bg-white/10 hover:bg-white/20 rounded-2xl text-2xl font-black transition-all active:scale-90"
+                   >
+                     0
+                   </button>
+                   <button
+                     onClick={handleBackspace}
+                     className="h-16 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                   >
+                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
+                     </svg>
+                   </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
       </div>

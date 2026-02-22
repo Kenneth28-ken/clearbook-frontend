@@ -22,6 +22,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ setSystemMode, onPasswordReco
     setLoading(true);
 
     try {
+      if (!navigator.onLine) {
+        setError("You are currently offline. Please connect to the internet to authorize access.");
+        setLoading(false);
+        return;
+      }
       // Use compat auth instance methods
       if (isSignUp) {
         await auth.createUserWithEmailAndPassword(email, password);

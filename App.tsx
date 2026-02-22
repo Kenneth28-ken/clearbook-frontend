@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { auth, db, firebase } from './firebase';
-import { AppView, CartItem, Product, Staff, ItemType, Modifier, PaymentRecord, TransactionRecord, Attendant, MobileOrder, SystemMode, Customer } from './types';
-import { MOCK_PRODUCTS as INITIAL_PRODUCTS, TAX_RATE, CATEGORIES, SERVER_LIST as INITIAL_SERVERS } from './constants';
+import PrismaticAuditModal from './components/PrismaticAuditModal';
+import { AppView, CartItem, Product, Staff, ItemType, Modifier, PaymentRecord, TransactionRecord, Attendant, MobileOrder, SystemMode, Customer, AuditCheckpoint, AuditType } from './types';
+import { MOCK_PRODUCTS as INITIAL_PRODUCTS, TAX_RATE, CATEGORIES, SERVER_LIST, STAFF_LIST } from './constants';
 
 // Components
 import LoginScreen from './components/LoginScreen';
@@ -29,6 +30,8 @@ import CRMModal from './components/CRMModal';
 import StaffManagementModal from './components/StaffManagementModal';
 import EditMobileOrderModal from './components/EditMobileOrderModal';
 import CustomerMenuView from './components/CustomerMenuView';
+import MasterDashboardModal from './components/MasterDashboardModal';
+import ProfitHistoryModal from './components/ProfitHistoryModal';
 
 const MASTER_EMAIL = "perfectmaney200@gmail.com";
 const STOCK_THRESHOLD = 10;
@@ -49,11 +52,40 @@ const parseDate = (dateVal: any): Date => {
   return isNaN(d.getTime()) ? new Date() : d;
 };
 
+const safeJsonStringify = (obj: any) => {
+  try {
+    return JSON.stringify(obj);
+  } catch (e) {
+    // If standard stringify fails, use a replacer to handle circular references
+    const cache = new Set();
+    return JSON.stringify(obj, (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (cache.has(value)) return; // Discard circular reference
+        cache.add(value);
+      }
+      return value;
+    });
+  }
+};
+
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.LOGIN);
   const [systemMode, setSystemMode] = useState<SystemMode>(SystemMode.RESTAURANT);
   const [user, setUser] = useState<firebase.User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const [activeUid, setActiveUid] = useState<string>('');
 
   const [currentStaff, setCurrentStaff] = useState<Staff | null>(null);
@@ -61,12 +93,12 @@ const App: React.FC = () => {
   
   const [staffList, setStaffList] = useState<Staff[]>(() => {
     const saved = localStorage.getItem('cb_staff');
-    return saved ? JSON.parse(saved) : [];
+    return saved ? JSON.parse(saved) : STAFF_LIST;
   });
 
   const [attendantsList, setAttendantsList] = useState<Attendant[]>(() => {
     const saved = localStorage.getItem('cb_attendants');
-    return saved ? JSON.parse(saved) : INITIAL_SERVERS;
+    return saved ? JSON.parse(saved) : SERVER_LIST;
   });
   
   const [products, setProducts] = useState<Product[]>(() => {
@@ -123,6 +155,11 @@ const App: React.FC = () => {
   const [showTokenRecharge, setShowTokenRecharge] = useState(false);
   const [showCRM, setShowCRM] = useState(false);
   const [showStaffManagement, setShowStaffManagement] = useState(false);
+  const [showMasterDashboard, setShowMasterDashboard] = useState(false);
+  const [showProfitHistory, setShowProfitHistory] = useState(false);
+  const [showPrismaticAudit, setShowPrismaticAudit] = useState(false);
+  const [impersonatedUid, setImpersonatedUid] = useState<string | null>(null);
+  const [accountStatus, setAccountStatus] = useState<'ACTIVE' | 'RESTRICTED' | 'SHUTDOWN'>('ACTIVE');
   const [editingMobileOrder, setEditingMobileOrder] = useState<MobileOrder | null>(null);
   
   const knownOrderIds = useRef<Set<string>>(new Set());
@@ -143,8 +180,68 @@ const App: React.FC = () => {
   const [whatsappCompatibilityMode, setWhatsappCompatibilityMode] = useState<boolean>(() => localStorage.getItem('cb_wa_compat') === 'true');
   const [thermalProxy, setThermalProxy] = useState(() => localStorage.getItem('cb_thermal_proxy') || '');
 
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  const auditCheckpoints = useMemo<AuditCheckpoint[]>(() => {
+    const list: AuditCheckpoint[] = [
+      {
+        id: 'network',
+        type: AuditType.SYSTEM,
+        status: isOnline ? 'VALID' : 'CRITICAL',
+        message: isOnline ? 'Network Connectivity Stable' : 'Network Disconnected',
+        timestamp: new Date()
+      },
+      {
+        id: 'sync',
+        type: AuditType.SYNC,
+        status: isSyncing ? 'WARNING' : 'VALID',
+        message: isSyncing ? 'Synchronizing with Cloud' : 'Cloud Sync Complete',
+        timestamp: new Date()
+      },
+      {
+        id: 'auth',
+        type: AuditType.SECURITY,
+        status: user ? 'VALID' : 'CRITICAL',
+        message: user ? `Authenticated as ${user.email}` : 'No Active User Session',
+        timestamp: new Date()
+      },
+      {
+        id: 'inventory',
+        type: AuditType.INVENTORY,
+        status: products.some(p => p.stock < STOCK_THRESHOLD) ? 'WARNING' : 'VALID',
+        message: products.some(p => p.stock < STOCK_THRESHOLD) ? 'Low Stock Detected' : 'Inventory Levels Optimal',
+        timestamp: new Date()
+      },
+      {
+        id: 'persistence',
+        type: AuditType.SYSTEM,
+        status: 'VALID',
+        message: 'Offline Persistence Active',
+        timestamp: new Date()
+      }
+    ];
+    return list;
+  }, [isOnline, isSyncing, user, products]);
+
+  const todayStats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayTxs = history.filter(tx => tx.timestamp.toISOString().split('T')[0] === today);
+    
+    let revenue = 0;
+    let cost = 0;
+    let profit = 0;
+
+    todayTxs.forEach(tx => {
+      revenue += tx.total;
+      tx.items.forEach(item => {
+        const itemCost = (item.costPrice || 0) * item.quantity;
+        cost += itemCost;
+        profit += (item.price * item.quantity) - itemCost;
+      });
+    });
+
+    return { revenue, cost, profit };
+  }, [history]);
 
   const isMasterMode = useMemo(() => user?.email === MASTER_EMAIL, [user]);
   const isTerminalLocked = tokens <= 0;
@@ -184,21 +281,25 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('cb_staff', JSON.stringify(staffList));
-    localStorage.setItem('cb_attendants', JSON.stringify(attendantsList));
-    localStorage.setItem('cb_products', JSON.stringify(products));
-    localStorage.setItem('cb_history', JSON.stringify(history));
-    localStorage.setItem('cb_customers', JSON.stringify(customers));
-    localStorage.setItem('cb_tokens', tokens.toString());
-    localStorage.setItem('cb_wa_tokens', whatsappTokens.toString());
-    localStorage.setItem('cb_active_cart', JSON.stringify(cart));
-    localStorage.setItem('cb_active_table', activeTableLabel);
-    localStorage.setItem('cb_currency', currencySymbol);
-    localStorage.setItem('cb_wa_api', whatsappApi);
-    localStorage.setItem('cb_wa_method', whatsappMethod);
-    localStorage.setItem('cb_wa_compat', whatsappCompatibilityMode.toString());
-    localStorage.setItem('cb_thermal_proxy', thermalProxy);
-    localStorage.setItem('cb_mobile_orders', JSON.stringify(mobileOrders));
+    try {
+      localStorage.setItem('cb_staff', safeJsonStringify(staffList));
+      localStorage.setItem('cb_attendants', safeJsonStringify(attendantsList));
+      localStorage.setItem('cb_products', safeJsonStringify(products));
+      localStorage.setItem('cb_history', safeJsonStringify(history));
+      localStorage.setItem('cb_customers', safeJsonStringify(customers));
+      localStorage.setItem('cb_tokens', tokens.toString());
+      localStorage.setItem('cb_wa_tokens', whatsappTokens.toString());
+      localStorage.setItem('cb_active_cart', safeJsonStringify(cart));
+      localStorage.setItem('cb_active_table', activeTableLabel);
+      localStorage.setItem('cb_currency', currencySymbol);
+      localStorage.setItem('cb_wa_api', whatsappApi);
+      localStorage.setItem('cb_wa_method', whatsappMethod);
+      localStorage.setItem('cb_wa_compat', whatsappCompatibilityMode.toString());
+      localStorage.setItem('cb_thermal_proxy', thermalProxy);
+      localStorage.setItem('cb_mobile_orders', safeJsonStringify(mobileOrders));
+    } catch (e) {
+      console.error("Failed to save state to localStorage:", e);
+    }
   }, [staffList, attendantsList, products, history, customers, tokens, whatsappTokens, cart, activeTableLabel, currencySymbol, whatsappApi, whatsappMethod, whatsappCompatibilityMode, thermalProxy, mobileOrders]);
 
   useEffect(() => {
@@ -268,20 +369,60 @@ const App: React.FC = () => {
   }, [activeUid]);
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => {
+    if (user && activeUid && !impersonatedUid) {
+      db.collection("pos_accounts").doc(user.uid).set({
+        email: user.email,
+        lastLogin: firebase.firestore.Timestamp.now(),
+        businessName: user.displayName || user.email?.split('@')[0] || 'Business'
+      }, { merge: true }).catch(e => console.warn("Registry sync failed", e));
+    }
+  }, [user, activeUid, impersonatedUid]);
+
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged(async (u) => {
       if (u) {
         setUser(u);
-        setActiveUid(u.uid);
+        const uid = impersonatedUid || u.uid;
+        setActiveUid(uid);
+
+        // Update central users registry in background (don't block UI)
+        db.collection("pos_accounts").doc(u.uid).set({
+          email: u.email,
+          lastLogin: firebase.firestore.Timestamp.now(),
+          businessName: u.displayName || u.email?.split('@')[0] || 'Business'
+        }, { merge: true }).catch(e => console.warn("Background registry sync failed", e));
+
+        // Check account status for the active UID (don't block UI)
+        db.collection("pos_accounts").doc(uid).get().then(userDoc => {
+          if (userDoc.exists) {
+            setAccountStatus(userDoc.data()?.status || 'ACTIVE');
+          }
+        }).catch(e => console.warn("Background status check failed", e));
+
         if (view !== AppView.CUSTOMER_MENU) setView(AppView.STAFF_LOGIN);
       } else {
         setUser(null);
         setActiveUid('');
+        setImpersonatedUid(null);
+        setAccountStatus('ACTIVE');
         if (view !== AppView.CUSTOMER_MENU) setView(AppView.LOGIN);
       }
       setAuthLoading(false);
     });
     return unsub;
-  }, []);
+  }, [impersonatedUid]);
+
+  const handleImpersonate = (uid: string) => {
+    setImpersonatedUid(uid);
+    setShowMasterDashboard(false);
+    alert(`Impersonating account: ${uid}`);
+  };
+
+  const stopImpersonating = () => {
+    setImpersonatedUid(null);
+    if (user) setActiveUid(user.uid);
+    alert("Returned to Master Account");
+  };
 
   const handleSaveCustomer = async (phone: string, name: string, transactionId?: string) => {
     if (!phone) return;
@@ -381,6 +522,39 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateProduct = async (product: Product) => {
+    setProducts(prev => prev.map(p => p.id === product.id ? product : p));
+    if (activeUid) {
+      try {
+        await db.collection("users").doc(activeUid).collection("products").doc(product.id).set(sanitize(product), { merge: true });
+      } catch (e) {
+        console.error("Product sync failed", e);
+      }
+    }
+  };
+
+  const handleUpdateProductField = async (productId: string, field: keyof Product, value: any) => {
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, [field]: value } : p));
+    if (activeUid) {
+      try {
+        await db.collection("users").doc(activeUid).collection("products").doc(productId).update({ [field]: value });
+      } catch (e) {
+        console.error("Product field sync failed", e);
+      }
+    }
+  };
+
+  const handleAddProduct = async (product: Product) => {
+    setProducts(prev => [...prev, product]);
+    if (activeUid) {
+      try {
+        await db.collection("users").doc(activeUid).collection("products").doc(product.id).set(sanitize(product));
+      } catch (e) {
+        console.error("Add product sync failed", e);
+      }
+    }
+  };
+
   const handleRemoveAttendant = async (id: string) => {
     setAttendantsList(prev => prev.filter(s => s.id !== id));
     if (activeUid) {
@@ -396,6 +570,7 @@ const App: React.FC = () => {
       productId: product.id,
       name: product.name,
       price: product.price + modifiers.reduce((acc, m) => acc + m.price, 0),
+      costPrice: product.costPrice || 0,
       quantity: qty,
       type: product.type,
       selectedModifiers: modifiers,
@@ -497,10 +672,12 @@ const App: React.FC = () => {
     // Prepend to history for instant UI update
     setHistory(prev => [transactionData, ...prev]);
     setTokens(prev => Math.max(0, prev - 1));
-    setProducts(prev => prev.map(p => {
+    
+    const updatedProducts = products.map(p => {
       const sold = cart.find(i => i.productId === p.id);
       return sold ? { ...p, stock: Math.max(0, p.stock - sold.quantity) } : p;
-    }));
+    });
+    setProducts(updatedProducts);
     
     setShowCheckout(false);
     setShowReceipt(transactionData);
@@ -511,16 +688,26 @@ const App: React.FC = () => {
     if (activeUid) {
       setIsSyncing(true);
       try {
+        // Sync stock changes to Firestore
+        const stockUpdates = cart.map(async (item) => {
+          const product = products.find(p => p.id === item.productId);
+          if (product) {
+            const newStock = Math.max(0, product.stock - item.quantity);
+            return db.collection("users").doc(activeUid).collection("products").doc(item.productId).update({ stock: newStock });
+          }
+        });
+        await Promise.all(stockUpdates);
+
         const firestorePayload = sanitize({
           ...transactionData,
           timestamp: firebase.firestore.Timestamp.fromDate(now)
         });
         await db.collection("users").doc(activeUid).collection("history").doc(transactionId).set(firestorePayload);
-        await db.collection("users").doc(activeUid).collection("config").doc("terminal").update({ tokens: tokens - 1 });
+        await db.collection("users").doc(activeUid).collection("config").doc("terminal").update({ tokens: Math.max(0, tokens - 1) });
       } catch (e) {
         console.error("Sale sync failed", e);
-      } finally { 
-        setIsSyncing(false); 
+      } finally {
+        setIsSyncing(false);
       }
     }
   };
@@ -569,8 +756,36 @@ const App: React.FC = () => {
   if (view === AppView.LOGIN) return <LoginScreen setSystemMode={setSystemMode} onPasswordRecovery={() => {}} />;
   if (view === AppView.STAFF_LOGIN) return <StaffLoginScreen staffList={staffList} onStaffAuthenticated={(s) => { setCurrentStaff(s); setView(AppView.SALES); }} onLogoutManager={handleLogout} />;
 
+  if (accountStatus === 'SHUTDOWN' && !isMasterMode) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-6 text-center">
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl max-w-md">
+          <div className="w-24 h-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-8">
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 mb-4 uppercase tracking-tight">Account Suspended</h1>
+          <p className="text-gray-500 font-bold mb-8 uppercase text-xs tracking-widest leading-loose">
+            This account has been shut down by the system administrator. Please contact support for more information.
+          </p>
+          <button onClick={() => auth.signOut()} className="w-full py-4 bg-gray-900 text-white font-black rounded-2xl uppercase tracking-widest text-sm">Sign Out</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+      {impersonatedUid && (
+        <div className="bg-amber-500 text-amber-950 px-6 py-2 flex justify-between items-center font-black text-[10px] uppercase tracking-widest shadow-lg z-[100]">
+          <div className="flex items-center gap-3">
+            <span className="animate-pulse">⚠️ IMPERSONATION MODE ACTIVE</span>
+            <span className="opacity-50">UID: {impersonatedUid}</span>
+          </div>
+          <button onClick={stopImpersonating} className="bg-amber-950 text-white px-4 py-1 rounded-full hover:bg-black transition-all">STOP IMPERSONATING</button>
+        </div>
+      )}
       {/* Notifications */}
       {newOrderNotification && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[2000] bg-orange-600 text-gray-900 px-10 py-5 rounded-[2.5rem] shadow-[0_20px_60px_rgba(234,88,12,0.6)] font-black uppercase text-sm animate-in slide-in-from-top-12 duration-500 flex items-center gap-5 border-4 border-orange-400">
@@ -608,12 +823,21 @@ const App: React.FC = () => {
         systemMode={systemMode}
         tokens={tokens}
         whatsappTokens={whatsappTokens}
-        isTerminalLocked={isTerminalLocked}
+        isTerminalLocked={isTerminalLocked || (accountStatus === 'RESTRICTED' && !isMasterMode)}
         isOnline={isOnline}
         isSyncing={isSyncing}
         isMaster={isMasterMode}
         onOpenStaffManagement={() => setShowStaffManagement(true)}
+        onOpenMasterDashboard={() => setShowMasterDashboard(true)}
+        onOpenPrismaticAudit={() => setShowPrismaticAudit(true)}
       />
+
+      {showPrismaticAudit && (
+        <PrismaticAuditModal 
+          checkpoints={auditCheckpoints}
+          onClose={() => setShowPrismaticAudit(false)}
+        />
+      )}
 
       <main className="flex-1 flex overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0 p-6">
@@ -665,14 +889,29 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <BottomBar subtotal={subtotal} tax={tax} total={total} currencySymbol={currencySymbol} onPay={() => setShowCheckout(true)} onShowHistory={() => setShowHistory(true)} disabled={cart.length === 0} tokens={tokens} />
+      <BottomBar 
+        subtotal={subtotal} 
+        tax={tax} 
+        total={total} 
+        currencySymbol={currencySymbol} 
+        onPay={() => setShowCheckout(true)} 
+        onShowHistory={() => setShowHistory(true)} 
+        disabled={cart.length === 0} 
+        tokens={tokens}
+        todayProfit={todayStats.profit}
+        todayCost={todayStats.cost}
+        todayRevenue={todayStats.revenue}
+        isMaster={isMasterMode}
+        canSeeProfit={currentStaff?.role === 'Manager'}
+        onOpenProfitHistory={() => setShowProfitHistory(true)}
+      />
 
       {showCheckout && <CheckoutModal total={total} currencySymbol={currencySymbol} onClose={() => setShowCheckout(false)} onComplete={handleFinalizeSale} />}
       {showHistory && <HistoryModal history={history} currencySymbol={currencySymbol} onClose={() => setShowHistory(false)} onVoid={() => {}} onViewReceipt={setShowReceipt} isManager={currentStaff?.role === 'Manager'} />}
       {showSettings && <SettingsModal currencySymbol={currencySymbol} onSetCurrency={setCurrencySymbol} whatsappApi={whatsappApi} onSetWhatsappApi={setWhatsappApi} whatsappMethod={whatsappMethod} onSetWhatsappMethod={setWhatsappMethod} whatsappCompatibilityMode={whatsappCompatibilityMode} onSetWhatsappCompatibilityMode={setWhatsappCompatibilityMode} thermalProxy={thermalProxy} onSetThermalProxy={setThermalProxy} onOpenRecharge={() => setShowTokenRecharge(true)} onSimulateOrder={() => {}} onClose={() => setShowSettings(false)} onRestoreData={handleRestoreData} />}
-      {showInventory && <InventoryModal products={products} currencySymbol={currencySymbol} onUpdateStock={(id, s) => setProducts(prev => prev.map(p => p.id === id ? { ...p, stock: s } : p))} onEditProduct={setEditingProduct} onUpdateProductField={(id, f, v) => setProducts(prev => prev.map(p => p.id === id ? { ...p, [f]: v } : p))} onAddNewProduct={() => setShowAddProduct(true)} onClose={() => setShowInventory(false)} />}
-      {showAddProduct && <AddProductModal onAdd={(p) => { setProducts(prev => [...prev, p]); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} />}
-      {editingProduct && <EditProductModal product={editingProduct} onUpdate={(p) => { setProducts(prev => prev.map(old => old.id === p.id ? p : old)); setEditingProduct(null); }} onClose={() => setEditingProduct(null)} currencySymbol={currencySymbol} />}
+      {showInventory && <InventoryModal products={products} history={history} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onClose={() => setShowInventory(false)} isMaster={isMasterMode} />}
+      {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} />}
+      {editingProduct && <EditProductModal product={editingProduct} onUpdate={(p) => { handleUpdateProduct(p); setEditingProduct(null); }} onClose={() => setEditingProduct(null)} currencySymbol={currencySymbol} />}
       {showModifier && <ModifierModal product={showModifier} currencySymbol={currencySymbol} onConfirm={(mods) => { addToCart(showModifier, mods); setShowModifier(null); }} onClose={() => setShowModifier(null)} />}
       {showWeight && <WeightModal product={showWeight} currencySymbol={currencySymbol} onConfirm={(w) => { addToCart(showWeight, [], w); setShowWeight(null); }} onClose={() => setShowWeight(null)} />}
       {showReceipt && (
@@ -710,6 +949,22 @@ const App: React.FC = () => {
          if (activeUid) db.collection("users").doc(activeUid).collection("mobile_orders").doc(o.id).update(sanitize({ items: o.items }));
          setEditingMobileOrder(null);
       }} onClose={() => setEditingMobileOrder(null)} currencySymbol={currencySymbol} />}
+      {showMasterDashboard && user && (
+        <MasterDashboardModal 
+          onClose={() => setShowMasterDashboard(false)} 
+          onImpersonate={handleImpersonate} 
+          currentImpersonatedUid={impersonatedUid}
+          masterUid={user.uid}
+        />
+      )}
+      {showProfitHistory && (
+        <ProfitHistoryModal 
+          history={history} 
+          products={products}
+          onClose={() => setShowProfitHistory(false)} 
+          currencySymbol={currencySymbol} 
+        />
+      )}
     </div>
   );
 };

@@ -27,10 +27,12 @@ interface TopBarProps {
   isSyncing: boolean;
   isMaster?: boolean;
   onOpenStaffManagement: () => void;
+  onOpenMasterDashboard: () => void;
+  onOpenPrismaticAudit: () => void;
 }
 
 const TopBar: React.FC<TopBarProps> = ({ 
-  staff, time, onLogout, onSwitchStaff, onOpenSettings, onOpenInventory, onOpenServerHub, onOpenTokenRecharge, onOpenCRM, onSimulateOrder, lowStockCount, isEditMode, onToggleEditMode, onOpenQRCode, onOpenMobileOrders, mobileOrderCount, systemMode, tokens, whatsappTokens, isTerminalLocked, isOnline, isSyncing, isMaster, onOpenStaffManagement 
+  staff, time, onLogout, onSwitchStaff, onOpenSettings, onOpenInventory, onOpenServerHub, onOpenTokenRecharge, onOpenCRM, onSimulateOrder, lowStockCount, isEditMode, onToggleEditMode, onOpenQRCode, onOpenMobileOrders, mobileOrderCount, systemMode, tokens, whatsappTokens, isTerminalLocked, isOnline, isSyncing, isMaster, onOpenStaffManagement, onOpenMasterDashboard, onOpenPrismaticAudit 
 }) => {
   return (
     <header className={`h-16 flex items-center justify-between px-6 shrink-0 border-b z-50 transition-colors ${isTerminalLocked ? 'bg-red-900 border-red-800' : 'bg-gray-800 border-gray-700'}`}>
@@ -43,12 +45,15 @@ const TopBar: React.FC<TopBarProps> = ({
         <div className="flex items-center gap-3">
            <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${systemMode === SystemMode.RESTAURANT ? 'bg-indigo-600/20 text-indigo-400 border-indigo-600/30' : 'bg-green-600/20 text-green-400 border-green-600/30'}`}>{systemMode}</div>
            
-           <div className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-all ${isOnline ? 'bg-green-600/10 border-green-500/30 text-green-400' : 'bg-orange-600/10 border-orange-500/30 text-orange-400'}`}>
+           <button 
+             onClick={onOpenPrismaticAudit}
+             className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-all hover:scale-105 active:scale-95 ${isOnline ? 'bg-green-600/10 border-green-500/30 text-green-400' : 'bg-orange-600/10 border-orange-500/30 text-orange-400'}`}
+           >
               <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-orange-400'}`}></div>
               <span className="text-[9px] font-black uppercase tracking-widest">
                 {isSyncing ? 'SYNCING...' : isOnline ? 'ONLINE' : 'OFFLINE'}
               </span>
-           </div>
+           </button>
 
            <button onClick={onOpenTokenRecharge} className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-all ${isTerminalLocked ? 'bg-white text-red-600 border-white' : 'bg-blue-600/10 border-blue-500/30 text-blue-400'}`} title="Sales Units">
               <span className="text-[10px] font-black uppercase tracking-widest">{tokens} SALES</span>
@@ -59,7 +64,7 @@ const TopBar: React.FC<TopBarProps> = ({
            </button>
            
            {isMaster && (
-             <div className="px-3 py-1 bg-amber-400 text-amber-950 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg animate-pulse">Master Overlord</div>
+             <button onClick={onOpenMasterDashboard} className="px-3 py-1 bg-amber-400 text-amber-950 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg animate-pulse hover:bg-amber-300 transition-colors">Master Overload</button>
            )}
         </div>
       </div>

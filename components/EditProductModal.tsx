@@ -13,7 +13,8 @@ interface EditProductModalProps {
 const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, onClose, currencySymbol }) => {
   const [name, setName] = useState(product.name);
   const [price, setPrice] = useState(product.price.toString());
-  const [stock, setStock] = useState(product.stock.toString()); // NEW
+  const [costPrice, setCostPrice] = useState((product.costPrice || 0).toString());
+  const [stock, setStock] = useState(product.stock.toString());
   const [category, setCategory] = useState(product.category);
   const [type, setType] = useState<ItemType>(product.type);
 
@@ -25,7 +26,8 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, 
       ...product,
       name,
       price: parseFloat(price),
-      stock: parseInt(stock) || 0, // NEW
+      costPrice: parseFloat(costPrice) || 0,
+      stock: parseInt(stock) || 0,
       category,
       type,
     };
@@ -43,7 +45,7 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, 
              </svg>
              <h2 className="text-xl font-black uppercase">Edit Product</h2>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-black/10 rounded-full transition-colors">
+          <button onClick={onClose} className="p-1 hover:bg-black/10 rounded-full transition-colors text-gray-900">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -53,12 +55,12 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-2">Item Name</label>
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Item Name</label>
               <input 
                 autoFocus
                 type="text" 
                 required
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 text-gray-900"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -66,33 +68,34 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, 
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-2">Price ({currencySymbol})</label>
+                <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest block mb-2">Selling Price ({currencySymbol})</label>
                 <input 
                   type="number" 
                   step="0.01"
                   required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 text-gray-900"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                 />
               </div>
               <div>
-                <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-2">Stock Level</label>
+                <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-2">Cost Price ({currencySymbol})</label>
                 <input 
                   type="number" 
+                  step="0.01"
                   required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  value={stock}
-                  onChange={(e) => setStock(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-2">Pricing Type</label>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Pricing Type</label>
                 <select 
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 appearance-none"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 appearance-none text-gray-900"
                   value={type}
                   onChange={(e) => setType(e.target.value as ItemType)}
                 >
@@ -101,9 +104,9 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, 
                 </select>
               </div>
               <div>
-                <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-2">Category</label>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Category</label>
                 <select 
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 appearance-none"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 appearance-none text-gray-900"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                 >
@@ -112,6 +115,17 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, 
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Stock Level</label>
+              <input 
+                type="number" 
+                required
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 text-gray-900"
+                value={stock}
+                onChange={(e) => setStock(e.target.value)}
+              />
             </div>
           </div>
 

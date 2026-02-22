@@ -28,6 +28,7 @@ export interface Product {
   id: string;
   name: string;
   price: number;
+  costPrice: number;
   category: string;
   type: ItemType;
   color?: string;
@@ -40,6 +41,7 @@ export interface CartItem {
   productId: string;
   name: string;
   price: number;
+  costPrice: number;
   quantity: number;
   type: ItemType;
   selectedModifiers: Modifier[];
@@ -96,4 +98,21 @@ export interface Customer {
   name?: string;
   lastVisit: Date;
   visitCount: number;
+}
+
+export enum AuditType {
+  SYSTEM = 'SYSTEM',
+  SECURITY = 'SECURITY',
+  INVENTORY = 'INVENTORY',
+  SYNC = 'SYNC',
+  TRANSACTION = 'TRANSACTION'
+}
+
+export interface AuditCheckpoint {
+  id: string;
+  type: AuditType;
+  status: 'VALID' | 'WARNING' | 'CRITICAL';
+  message: string;
+  timestamp: Date;
+  details?: any;
 }
