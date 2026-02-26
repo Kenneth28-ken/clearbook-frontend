@@ -33,45 +33,69 @@ const ProfitHistoryModal: React.FC<ProfitHistoryModalProps> = ({ history, produc
   }, [history, products]);
 
   const profitData = useMemo(() => {
-    const items: any[] = [];
-    history.forEach(tx => {
-      tx.items.forEach(item => {
-        const costPrice = item.costPrice || 0;
-        const sellingPrice = item.price;
-        const qty = item.quantity;
-        const totalCost = costPrice * qty;
-        const totalRevenue = sellingPrice * qty;
-        const totalProfit = totalRevenue - totalCost;
+    const performance: Record<string, {
+      productId: string;
+      name: string;
+      totalQuantity: number;
+      totalRevenue: number;
+      totalCost: number;
+      netProfit: number;
+      avgSellPrice: number;
+      costPrice: number;
+    }> = {};
 
-        items.push({
-          id: `${tx.id}-${item.cartId}`,
-          txId: tx.id,
-          name: item.name,
-          costPrice,
-          sellingPrice,
-          quantity: qty,
-          totalCost,
-          totalRevenue,
-          totalProfit,
-          timestamp: tx.timestamp
+    history.forEach(tx => {
+      if (tx.items) {
+        tx.items.forEach(item => {
+          const costPrice = item.costPrice || 0;
+          const revenue = item.price * item.quantity;
+          const cost = costPrice * item.quantity;
+
+          // Use item name as key to ensure all items are captured and grouped by name, 
+          // preventing items with shared IDs but different names from being hidden.
+          const key = item.name;
+
+          if (!performance[key]) {
+            performance[key] = {
+              productId: key, // Use name as ID for the view key
+              name: item.name,
+              totalQuantity: 0,
+              totalRevenue: 0,
+              totalCost: 0,
+              netProfit: 0,
+              avgSellPrice: 0,
+              costPrice: costPrice,
+            };
+          }
+
+          const current = performance[key];
+          current.totalQuantity += item.quantity;
+          current.totalRevenue += revenue;
+          current.totalCost += cost;
         });
-      });
+      }
     });
-    return items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    return Object.values(performance).map(p => ({
+      ...p,
+      netProfit: p.totalRevenue - p.totalCost,
+      avgSellPrice: p.totalQuantity > 0 ? p.totalRevenue / p.totalQuantity : 0,
+    })).sort((a, b) => b.netProfit - a.netProfit);
   }, [history]);
 
   const filteredData = profitData.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.txId.toLowerCase().includes(searchTerm.toLowerCase())
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totals = useMemo(() => {
     return filteredData.reduce((acc, curr) => ({
       cost: acc.cost + curr.totalCost,
       revenue: acc.revenue + curr.totalRevenue,
-      profit: acc.profit + curr.totalProfit
+      profit: acc.profit + curr.netProfit
     }), { cost: 0, revenue: 0, profit: 0 });
   }, [filteredData]);
+
+
 
   return (
     <div className="fixed inset-0 bg-black z-[500] flex flex-col overflow-hidden animate-in fade-in duration-300">
@@ -160,30 +184,29 @@ const ProfitHistoryModal: React.FC<ProfitHistoryModalProps> = ({ history, produc
           </div>
         </div>
 
-        {/* Content Table */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-black">
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-black min-h-0">
           <div className="w-full border-collapse">
             <div className="grid grid-cols-6 gap-6 px-8 py-4 border-b border-zinc-800 text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
-              <div className="col-span-2">Item / Transaction ID</div>
+              <div className="col-span-2">Product Name</div>
               <div className="text-right">Unit Cost</div>
-              <div className="text-right">Unit Sell</div>
-              <div className="text-right">Total Cost</div>
+              <div className="text-right">Avg. Sell Price</div>
+              <div className="text-right">Total Revenue</div>
               <div className="text-right">Net Profit</div>
             </div>
             
             <div className="divide-y divide-zinc-900">
               {filteredData.map(item => (
-                <div key={item.id} className="grid grid-cols-6 gap-6 px-8 py-6 hover:bg-zinc-900/40 transition-all items-center group rounded-xl">
+                <div key={item.productId} className="grid grid-cols-6 gap-6 px-8 py-6 hover:bg-zinc-900/40 transition-all items-center group rounded-xl">
                   <div className="col-span-2">
                     <div className="font-black text-white text-xl uppercase truncate tracking-tight group-hover:text-green-400 transition-colors">{item.name}</div>
-                    <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-1">TX: #{item.txId} • QTY: {item.quantity}</div>
+                    <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-1">TOTAL SOLD: {item.totalQuantity.toFixed(item.totalQuantity % 1 === 0 ? 0 : 2)}</div>
                   </div>
                   <div className="text-right font-mono text-xs text-zinc-500">{currencySymbol}{item.costPrice.toFixed(2)}</div>
-                  <div className="text-right font-mono text-xs text-white">{currencySymbol}{item.sellingPrice.toFixed(2)}</div>
-                  <div className="text-right font-mono text-xs text-orange-500/60">{currencySymbol}{item.totalCost.toFixed(2)}</div>
+                  <div className="text-right font-mono text-xs text-white">{currencySymbol}{item.avgSellPrice.toFixed(2)}</div>
+                  <div className="text-right font-mono text-xs text-blue-500/60">{currencySymbol}{item.totalRevenue.toFixed(2)}</div>
                   <div className="text-right font-mono text-3xl font-black text-green-500 tabular-nums">
                     <span className="text-xs opacity-40 mr-1">{currencySymbol}</span>
-                    {item.totalProfit.toFixed(2)}
+                    {item.netProfit.toFixed(2)}
                   </div>
                 </div>
               ))}
@@ -191,7 +214,6 @@ const ProfitHistoryModal: React.FC<ProfitHistoryModalProps> = ({ history, produc
           </div>
         </div>
 
-        {/* Summary Footer */}
         <div className="p-10 bg-zinc-900 border-t border-zinc-800 flex justify-between items-center shrink-0 shadow-[0_-20px_100px_rgba(0,0,0,0.5)]">
           <div className="flex gap-16">
             <div>

@@ -1,18 +1,32 @@
 
-import React, { useState } from 'react';
-import { PaymentRecord } from '../types';
+import React, { useState, useMemo } from 'react';
+import { PaymentRecord, Customer } from '../types';
 
 interface CheckoutModalProps {
   total: number;
   onClose: () => void;
-  onComplete: (payments: PaymentRecord[]) => void;
+  onComplete: (payments: PaymentRecord[], customerName: string, discount: number, customerPhone?: string) => void;
   currencySymbol: string;
+  customers: Customer[];
 }
 
-const CheckoutModal: React.FC<CheckoutModalProps> = ({ total, onClose, onComplete, currencySymbol }) => {
+const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onClose, onComplete, currencySymbol, customers }) => {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [currentAmount, setCurrentAmount] = useState('0');
   const [activeMethod, setActiveMethod] = useState<'CASH' | 'CARD' | 'MOBILE'>('CASH');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [appliedCouponAmount, setAppliedCouponAmount] = useState(0);
+
+  const matchedCustomers = useMemo(() => {
+    if (!customerSearch.trim()) return [];
+    const s = customerSearch.toLowerCase();
+    return customers.filter(c => 
+      c.phone.includes(s) || (c.name && c.name.toLowerCase().includes(s))
+    ).slice(0, 5);
+  }, [customerSearch, customers]);
+
+  const total = initialTotal - appliedCouponAmount;
 
   const paidAmount = payments.reduce((acc, p) => acc + p.amount, 0);
   const remaining = Math.max(0, total - paidAmount);
@@ -40,7 +54,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total, onClose, onComplet
 
   const handleComplete = () => {
     if (paidAmount >= total) {
-      onComplete(payments);
+      onComplete(payments, selectedCustomer?.name || customerSearch, appliedCouponAmount, selectedCustomer?.phone || (customerSearch.match(/^\d+$/) ? customerSearch : undefined));
+    }
+  };
+
+  const applyCoupon = () => {
+    if (selectedCustomer && (selectedCustomer.couponBalance || 0) > 0) {
+      const amountToApply = Math.min(selectedCustomer.couponBalance || 0, initialTotal);
+      setAppliedCouponAmount(amountToApply);
     }
   };
 
@@ -60,13 +81,78 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total, onClose, onComplet
           </button>
 
           <div className="space-y-6 flex-1">
+             <div className="relative">
+               <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">Customer Search (Name/Phone)</label>
+               <input 
+                 type="text"
+                 placeholder="Search or Enter New..."
+                 className="w-full p-4 bg-white border-2 border-gray-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 text-gray-900 uppercase"
+                 value={customerSearch}
+                 onChange={(e) => {
+                   setCustomerSearch(e.target.value);
+                   setSelectedCustomer(null);
+                   setAppliedCouponAmount(0);
+                 }}
+               />
+               {matchedCustomers.length > 0 && !selectedCustomer && (
+                 <div className="absolute top-full left-0 right-0 bg-white border-2 border-gray-100 rounded-xl shadow-xl z-50 mt-1 overflow-hidden">
+                   {matchedCustomers.map(c => (
+                     <button 
+                       key={c.phone}
+                       onClick={() => {
+                         setSelectedCustomer(c);
+                         setCustomerSearch(c.name || c.phone);
+                       }}
+                       className="w-full p-4 text-left hover:bg-blue-50 border-b last:border-0 transition-colors"
+                     >
+                       <div className="font-black text-xs text-gray-900">{c.name || 'Unnamed'}</div>
+                       <div className="text-[10px] text-gray-400 font-bold">{c.phone} • Bal: {currencySymbol}{(c.couponBalance || 0).toFixed(2)}</div>
+                     </button>
+                   ))}
+                 </div>
+               )}
+             </div>
+
+             {selectedCustomer && (
+               <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-in zoom-in-95">
+                 <div className="flex justify-between items-start mb-2">
+                   <div>
+                     <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Available Coupon</div>
+                     <div className="text-xl font-black text-blue-900">{currencySymbol}{(selectedCustomer.couponBalance || 0).toFixed(2)}</div>
+                   </div>
+                   <button 
+                     onClick={applyCoupon}
+                     disabled={appliedCouponAmount > 0 || (selectedCustomer.couponBalance || 0) <= 0}
+                     className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${
+                       appliedCouponAmount > 0 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
+                     }`}
+                   >
+                     {appliedCouponAmount > 0 ? 'Applied' : 'Apply'}
+                   </button>
+                 </div>
+                 <div className="text-[9px] font-bold text-blue-400 uppercase">Visits: {selectedCustomer.visitCount}</div>
+               </div>
+             )}
+
              <div>
-               <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">Total Bill</label>
-               <div className="text-3xl font-black text-gray-900 tabular-nums leading-none">
-                 <span className="text-lg opacity-30 mr-1">{currencySymbol}</span>
-                 {total.toFixed(2)}
+               <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">Subtotal</label>
+               <div className={`text-xl font-black tabular-nums leading-none ${appliedCouponAmount > 0 ? 'text-gray-400 line-through opacity-50' : 'text-gray-900'}`}>
+                 <span className="text-sm mr-1">{currencySymbol}</span>
+                 {initialTotal.toFixed(2)}
                </div>
              </div>
+
+             {appliedCouponAmount > 0 && (
+               <div className="bg-green-50 p-3 rounded-xl border border-green-100 animate-in slide-in-from-top-2">
+                 <label className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] block mb-1">Coupon Redeemed</label>
+                 <div className="text-lg font-black text-green-700 tabular-nums leading-none">
+                   -<span className="text-sm mr-1">{currencySymbol}</span>
+                   {appliedCouponAmount.toFixed(2)}
+                 </div>
+               </div>
+             )}
              
              <div className="h-px bg-gray-200"></div>
 

@@ -5,7 +5,7 @@ export enum AppView {
   SALES = 'SALES',
   CHECKOUT = 'CHECKOUT',
   RECEIPT = 'RECEIPT',
-  CUSTOMER_MENU = 'CUSTOMER_MENU',
+  CUSTOMER_MENU = 'CUSTOMER_MENU'
 }
 
 export enum SystemMode {
@@ -77,6 +77,9 @@ export interface TransactionRecord {
   items: CartItem[];
   payments: PaymentRecord[];
   total: number;
+  subtotal: number;
+  discount?: number;
+  couponApplied?: boolean;
   mode: SystemMode;
   synced?: boolean;
   offline?: boolean;
@@ -98,6 +101,7 @@ export interface Customer {
   name?: string;
   lastVisit: Date;
   visitCount: number;
+  couponBalance: number;
 }
 
 export enum AuditType {

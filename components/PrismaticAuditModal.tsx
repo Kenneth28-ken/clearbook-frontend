@@ -63,8 +63,8 @@ const PrismaticAuditModal: React.FC<PrismaticAuditModalProps> = ({ checkpoints, 
               </svg>
             </div>
             <div>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Prismatic Audit</h2>
-              <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">Key System Checkpoints & Integrity</p>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Profit History</h2>
+              <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">Detailed Sales & Profit Analysis</p>
             </div>
           </div>
           <button onClick={onClose} className="p-4 bg-zinc-900 hover:bg-zinc-800 rounded-full transition-all text-zinc-400 hover:text-white border border-zinc-800">

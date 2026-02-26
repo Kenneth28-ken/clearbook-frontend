@@ -29,11 +29,14 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-      {filtered.map(product => (
+      {filtered.map(product => {
+        const isOutOfStock = product.stock <= 0;
+        return (
         <div key={product.id} className="relative group h-40">
           <button
-            onClick={() => onSelect(product)}
-            className={`${product.color || 'bg-white'} p-4 w-full h-full rounded-2xl shadow-sm border border-gray-200 flex flex-col items-start text-left transition-all hover:shadow-md hover:border-blue-300 active:scale-95 relative overflow-hidden`}
+            onClick={() => !isOutOfStock && onSelect(product)}
+            disabled={isOutOfStock}
+            className={`${product.color || 'bg-white'} p-4 w-full h-full rounded-2xl shadow-sm border border-gray-200 flex flex-col items-start text-left transition-all ${isOutOfStock ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:shadow-md hover:border-blue-300 active:scale-95'} relative overflow-hidden`}
           >
             <span className="text-xs font-black text-gray-400 uppercase tracking-tighter mb-1">{product.category}</span>
             <h3 className="font-bold text-gray-800 leading-tight mb-auto line-clamp-2">{product.name}</h3>
@@ -49,6 +52,14 @@ const ProductGrid: React.FC<ProductGridProps> = ({
               </div>
             )}
             
+            {isOutOfStock && (
+               <div className="absolute inset-0 bg-gray-100/50 flex items-center justify-center z-20 backdrop-blur-[1px]">
+                  <div className="bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest shadow-sm transform -rotate-12 border border-white/20">
+                     Out of Stock
+                  </div>
+               </div>
+            )}
+
             <div className="absolute inset-0 bg-blue-600 opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none"></div>
           </button>
 
@@ -67,7 +78,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             </button>
           )}
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 };

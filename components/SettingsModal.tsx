@@ -17,6 +17,12 @@ interface SettingsModalProps {
   onSetThermalProxy: (val: string) => void;
   onChangePassword?: (newPass: string) => void;
   onRestoreData?: (data: any) => void;
+  printerType: 'USB' | 'BLUETOOTH' | 'PROXY';
+  onSetPrinterType: (type: 'USB' | 'BLUETOOTH' | 'PROXY') => void;
+  firstTimeMessage: string;
+  onSetFirstTimeMessage: (text: string) => void;
+  businessName: string;
+  onSetBusinessName: (name: string) => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -34,7 +40,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   thermalProxy,
   onSetThermalProxy,
   onChangePassword,
-  onRestoreData
+  onRestoreData,
+  printerType,
+  onSetPrinterType,
+  firstTimeMessage,
+  onSetFirstTimeMessage,
+  businessName,
+  onSetBusinessName
 }) => {
   const [newPass, setNewPass] = useState('');
   const [isTesting, setIsTesting] = useState(false);
@@ -113,7 +125,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       }
     }
     
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const cache = new Set();
+    const safeString = JSON.stringify(backupData, (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (cache.has(value)) {
+          return; // Discard circular reference
+        }
+        cache.add(value);
+      }
+      return value;
+    }, 2);
+    
+    const blob = new Blob([safeString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -165,6 +188,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div className="p-10 space-y-10 overflow-y-auto custom-scrollbar bg-gray-50/50">
+          <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
+             <div className="flex items-center gap-3 mb-3">
+               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Business Name</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase">Appears on receipts.</p>
+             </div>
+             <input 
+               type="text"
+               className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500 transition-colors text-gray-900 uppercase"
+               value={businessName}
+               onChange={(e) => onSetBusinessName(e.target.value)}
+               placeholder="ENTER BUSINESS NAME..."
+             />
+          </div>
+
           <div className="p-6 bg-white border-4 border-dashed border-red-100 rounded-[2.5rem] space-y-4">
              <div className="flex items-center gap-3">
                 <div className="p-2 bg-red-100 text-red-600 rounded-lg">
@@ -206,7 +243,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          <div className="pt-8 border-t space-y-8">
+            <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
+              <div className="flex items-center gap-3 mb-3">
+                <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">First-Time Message</h3>
+                <p className="text-xs font-bold text-gray-400 uppercase">Sent to new customers.</p>
+              </div>
+              <textarea 
+                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors text-gray-900"
+                rows={3}
+                value={firstTimeMessage}
+                onChange={(e) => onSetFirstTimeMessage(e.target.value)}
+                placeholder="Welcome message..."
+              />
+            </div>
+
+            <div className="pt-8 border-t space-y-8">
              <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">n8n Cloud Webhook Bridge</label>
                 <div className="bg-white p-5 rounded-[2rem] border-2 border-gray-100 shadow-sm space-y-4">
@@ -266,7 +317,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
              </div>
 
              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Hardware: USB Thermal Printing</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Hardware: Thermal Printing</label>
                 <div className="bg-blue-50/50 p-6 rounded-[2rem] border-2 border-blue-100 space-y-5">
                     <div className="flex items-center gap-3">
                        <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg">
@@ -274,17 +325,30 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                           </svg>
                        </div>
-                       <div>
-                          <p className="text-[11px] font-black text-blue-900 uppercase">Printer Bridge Active</p>
+                       <div className="flex-1">
+                          <p className="text-[11px] font-black text-blue-900 uppercase">Printer Configuration</p>
+                          <div className="flex gap-2 mt-2">
+                             {(['USB', 'BLUETOOTH', 'PROXY'] as const).map(type => (
+                               <button
+                                 key={type}
+                                 onClick={() => onSetPrinterType(type)}
+                                 className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${printerType === type ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-blue-400 border border-blue-100'}`}
+                               >
+                                 {type}
+                               </button>
+                             ))}
+                          </div>
                        </div>
                     </div>
-                    <input 
-                      type="text"
-                      placeholder="Proxy IP (Optional)..."
-                      className="w-full p-3 bg-white border-2 border-blue-100 rounded-xl text-[10px] font-mono font-bold outline-none focus:border-blue-500 text-gray-900 shadow-sm"
-                      value={thermalProxy}
-                      onChange={(e) => onSetThermalProxy(e.target.value)}
-                    />
+                    {printerType === 'PROXY' && (
+                      <input 
+                        type="text"
+                        placeholder="Proxy IP (Optional)..."
+                        className="w-full p-3 bg-white border-2 border-blue-100 rounded-xl text-[10px] font-mono font-bold outline-none focus:border-blue-500 text-gray-900 shadow-sm"
+                        value={thermalProxy}
+                        onChange={(e) => onSetThermalProxy(e.target.value)}
+                      />
+                    )}
                 </div>
              </div>
           </div>

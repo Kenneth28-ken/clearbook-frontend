@@ -17,6 +17,11 @@ const app = firebase.initializeApp(firebaseConfig);
 export const auth = firebase.auth();
 export const db = firebase.firestore();
 
+// Use long polling for better connectivity in some environments
+db.settings({
+  experimentalForceLongPolling: true
+});
+
 // Enable offline persistence
 db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
   if (err.code === 'failed-precondition') {

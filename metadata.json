@@ -1,5 +1,5 @@
 {
   "name": "Clear Book",
-  "description": "A high-performance, industry-standard POS system for supermarkets and restaurants, optimized for touchscreen terminals with robust cart management and split-payment capabilities.",
+  "description": "A high-performance, industry-standard POS system for supermarkets and restaurants, featuring an accumulative customer coupon system (5% earned per sale), full-screen sales analytics, multi-type printer support (USB, Bluetooth, Proxy), and integrated WhatsApp messaging.",
   "requestFramePermissions": []
 }

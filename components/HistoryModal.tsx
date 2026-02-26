@@ -2,16 +2,18 @@
 import React, { useState, useMemo } from 'react';
 import { TransactionRecord, SystemMode } from '../types';
 
+import { Staff } from '../types';
+
 interface HistoryModalProps {
   history: TransactionRecord[];
   onClose: () => void;
-  onVoid: (id: string) => void;
-  onViewReceipt: (tx: TransactionRecord) => void;
-  isManager: boolean;
+  onReprint: (transaction: TransactionRecord) => void;
+  onDeleteTransaction: (transactionId: string) => void;
   currencySymbol: string;
+  currentStaff: Staff | null;
 }
 
-const HistoryModal: React.FC<HistoryModalProps> = ({ history, onClose, onVoid, onViewReceipt, isManager, currencySymbol }) => {
+const HistoryModal: React.FC<HistoryModalProps> = ({ history, onClose, onReprint, onDeleteTransaction, currencySymbol, currentStaff }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -83,215 +85,170 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ history, onClose, onVoid, o
   const totalRevenue = filteredHistory.reduce((acc, curr) => acc + curr.total, 0);
 
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center z-[150] p-6">
-      <div className="bg-black rounded-[2.5rem] w-full max-w-6xl h-[92vh] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] flex flex-col border border-zinc-800">
-        {/* Header */}
-        <div className="p-8 bg-black text-white flex justify-between items-center shrink-0 border-b border-zinc-900">
-          <div className="flex items-center gap-5">
-             <div className="p-3.5 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-lg">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-             </div>
-             <div>
-                <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Financial Ledger</h2>
-                <p className="opacity-50 text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 mt-1">Audit Log & Performance Registry</p>
-             </div>
-          </div>
-          <button onClick={onClose} className="p-3 bg-black hover:bg-zinc-800 border-2 border-zinc-800 rounded-full transition-all text-white">
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+    <div className="fixed inset-0 bg-white z-[1000] flex flex-col animate-in fade-in duration-300">
+      {/* Header */}
+      <div className="bg-gray-900 text-white px-8 py-6 flex justify-between items-center shrink-0 shadow-xl">
+        <div className="flex items-center gap-6">
+          <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-full transition-all">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           </button>
+          <div>
+            <h2 className="text-3xl font-black uppercase tracking-tighter">Sales Ledger</h2>
+            <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Transaction History & Analytics</p>
+          </div>
         </div>
+        
+        <div className="flex items-center gap-8">
+          <div className="text-right">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Revenue</p>
+            <p className="text-4xl font-black tabular-nums text-green-400">{currencySymbol}{totalRevenue.toLocaleString()}</p>
+          </div>
+          <button onClick={onClose} className="bg-white text-gray-900 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-500 hover:text-white transition-all active:scale-95 shadow-lg">Close Ledger</button>
+        </div>
+      </div>
 
-        {/* Filter Bar */}
-        <div className="p-8 bg-black border-b border-zinc-900 space-y-8 shrink-0">
-          <div className="flex flex-wrap items-end gap-6">
-            <div className="flex-1 min-w-[280px]">
-              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-3">Transaction Search</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  placeholder="SEARCH TXID OR CUSTOMER..." 
-                  className="w-full pl-14 pr-4 py-5 bg-zinc-900 border-2 border-zinc-800 rounded-2xl font-black outline-none focus:border-white transition-all uppercase text-white shadow-inner"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <svg className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block">System Mode Filter</label>
-              <div className="flex gap-2 bg-zinc-900 p-1.5 rounded-2xl border-2 border-zinc-800">
-                 <button onClick={() => setModeFilter('ALL')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${modeFilter === 'ALL' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white'}`}>All Modes</button>
-                 <button onClick={() => setModeFilter(SystemMode.SUPERMARKET)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${modeFilter === SystemMode.SUPERMARKET ? 'bg-green-600 text-white' : 'text-zinc-500 hover:text-white'}`}>Retail</button>
-                 <button onClick={() => setModeFilter(SystemMode.RESTAURANT)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${modeFilter === SystemMode.RESTAURANT ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:text-white'}`}>Restaurant</button>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block">Period</label>
-              <div className="flex items-center gap-3">
-                 <input 
-                   type="date" 
-                   className="px-5 py-4 bg-zinc-900 border-2 border-zinc-800 rounded-2xl font-bold outline-none focus:border-white transition-all text-xs text-white color-scheme-dark"
-                   value={startDate}
-                   onChange={(e) => setStartDate(e.target.value)}
-                   style={{ colorScheme: 'dark' }}
-                 />
-                 <span className="text-zinc-700 font-black text-xs">TO</span>
-                 <input 
-                   type="date" 
-                   className="px-5 py-4 bg-zinc-900 border-2 border-zinc-800 rounded-2xl font-bold outline-none focus:border-white transition-all text-xs text-white color-scheme-dark"
-                   value={endDate}
-                   onChange={(e) => setEndDate(e.target.value)}
-                   style={{ colorScheme: 'dark' }}
-                 />
-              </div>
+      <div className="flex-1 flex overflow-hidden bg-gray-50">
+        {/* Sidebar Filters */}
+        <div className="w-80 border-r bg-white p-8 flex flex-col gap-8 overflow-y-auto">
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Search Transactions</label>
+            <div className="relative">
+              <input 
+                type="text" 
+                placeholder="ID, Customer, Staff..."
+                className="w-full pl-10 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-blue-500 rounded-2xl font-bold outline-none transition-all text-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <svg className="w-5 h-5 absolute left-3.5 top-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-zinc-900/50">
-             <button onClick={() => setQuickDate('today')} className="px-6 py-4 bg-black border-2 border-zinc-800 text-white rounded-2xl text-[10px] font-black uppercase hover:border-white transition-all active:scale-95 shadow-lg">Today</button>
-             <button onClick={() => setQuickDate('yesterday')} className="px-6 py-4 bg-black border-2 border-zinc-800 text-white rounded-2xl text-[10px] font-black uppercase hover:border-white transition-all active:scale-95 shadow-lg">Yesterday</button>
-             <button onClick={() => setQuickDate('week')} className="px-6 py-4 bg-black border-2 border-zinc-800 text-white rounded-2xl text-[10px] font-black uppercase hover:border-white transition-all active:scale-95 shadow-lg">Last 7D</button>
-             {(startDate || endDate || searchQuery || modeFilter !== 'ALL') && (
-               <button 
-                 onClick={() => { setStartDate(''); setEndDate(''); setSearchQuery(''); setModeFilter('ALL'); }}
-                 className="px-6 py-4 bg-black border-2 border-red-900/40 text-red-500 rounded-2xl text-[10px] font-black uppercase hover:bg-red-900/20 transition-all active:scale-95 shadow-lg"
-               >
-                 Clear Filters
-               </button>
-             )}
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Filter by Mode</label>
+            <div className="grid grid-cols-1 gap-2">
+              {['ALL', SystemMode.RESTAURANT, SystemMode.SUPERMARKET].map(mode => (
+                <button 
+                  key={mode} 
+                  onClick={() => setModeFilter(mode as any)}
+                  className={`py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all text-left flex justify-between items-center ${modeFilter === mode ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                >
+                  {mode === SystemMode.SUPERMARKET ? 'RETAIL' : mode}
+                  {modeFilter === mode && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Quick Date Range</label>
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                { label: 'Today', value: 'today' },
+                { label: 'Yesterday', value: 'yesterday' },
+                { label: 'Last 7 Days', value: 'week' },
+                { label: 'All Time', value: 'all' }
+              ].map(range => (
+                <button 
+                  key={range.value} 
+                  onClick={() => {
+                    if (range.value === 'all') {
+                      setStartDate('');
+                      setEndDate('');
+                    } else {
+                      setQuickDate(range.value as any);
+                    }
+                  }}
+                  className={`py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all text-left flex justify-between items-center ${range.value === 'all' && !startDate && !endDate ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                >
+                  {range.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Scrollable List */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-black">
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           {Object.keys(groupedHistory).length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-zinc-800 space-y-6">
-              <svg className="w-32 h-32 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              <p className="text-2xl font-black uppercase tracking-[0.3em] opacity-30">Archive Empty</p>
+            <div className="h-full flex flex-col items-center justify-center text-gray-300 uppercase font-black">
+              <svg className="w-24 h-24 mb-6 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+              <p className="tracking-[0.5em]">No Transactions Found</p>
             </div>
           ) : (
-            <div className="space-y-12">
-              {(Object.entries(groupedHistory) as [string, TransactionRecord[]][]).map(([date, txs]) => (
-                <div key={date} className="space-y-6">
-                   <div className="flex items-center gap-6">
-                      <h3 className="text-zinc-500 font-black uppercase text-[10px] tracking-[0.5em] whitespace-nowrap">{date}</h3>
-                      <div className="h-px bg-zinc-900 flex-1"></div>
-                      <div className="bg-zinc-900 px-4 py-1.5 rounded-full border border-zinc-800">
-                        <span className="text-zinc-600 font-black text-[9px] uppercase tracking-widest">{txs.length} TRANSACTIONS</span>
-                      </div>
-                   </div>
-                   
-                   <div className="space-y-5">
-                      {txs.map((tx: TransactionRecord) => (
-                        <div key={tx.id} className="bg-zinc-950 p-7 rounded-[2.5rem] border-2 border-zinc-900 hover:border-white/20 hover:bg-zinc-900/50 transition-all grid grid-cols-12 items-center gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300 shadow-2xl">
-                          <div className="col-span-2">
-                            <div className="font-mono font-black text-2xl text-white">#{tx.id}</div>
-                            <div className="text-sm text-zinc-400 font-black uppercase mt-1 tracking-tighter">
-                              {tx.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          </div>
-                          <div className="col-span-4">
-                            <div className="flex items-center gap-4">
-                               <div className="w-14 h-14 rounded-2xl bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center text-xl font-black text-white uppercase shadow-lg">
-                                  {tx.customerName ? tx.customerName.charAt(0) : tx.sellerName.charAt(0)}
-                               </div>
-                               <div className="min-w-0">
-                                  <div className="font-black text-white text-xl truncate uppercase tracking-tight leading-none mb-1">
-                                     {tx.customerName ? `CUSTOMER: ${tx.customerName}` : 'WALK-IN GUEST'}
-                                  </div>
-                                  <div className="text-zinc-500 font-black text-[10px] uppercase tracking-widest">
-                                     Sold By: {tx.sellerName}
-                                  </div>
-                                  <div className={`text-[8px] font-black px-2 py-0.5 rounded-full inline-block mt-2 ${tx.mode === SystemMode.RESTAURANT ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-600/30' : 'bg-green-600/20 text-green-400 border border-green-600/30'}`}>
-                                    {tx.mode}
-                                  </div>
-                               </div>
-                            </div>
-                          </div>
-                          <div className="col-span-2">
-                            <div className="text-sm font-black text-zinc-300 leading-relaxed">
-                               {tx.items.length} Items Sold
-                               <span className="text-zinc-500 uppercase italic truncate block text-[10px] font-bold">
-                                  {tx.items.slice(0, 1).map(i => i.name).join(', ')}{tx.items.length > 1 ? '...' : ''}
-                               </span>
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-right">
-                            <div className="flex flex-wrap justify-end gap-2">
-                              {tx.payments.map((p, idx) => (
-                                <span key={idx} className="bg-black text-white text-[9px] font-black px-3 py-1.5 rounded-xl border border-zinc-800 uppercase tracking-tight">
-                                  {p.method}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-right">
-                            <div className="text-3xl font-black text-white tracking-tighter tabular-nums leading-none">
-                               <span className="text-sm opacity-30 mr-1.5">{currencySymbol}</span>
-                               {tx.total.toFixed(2)}
-                            </div>
-                          </div>
-                          <div className="col-span-1 flex justify-end">
-                            <button 
-                              onClick={() => onViewReceipt(tx)}
-                              className="p-4 bg-zinc-900 text-white hover:bg-zinc-800 border-2 border-zinc-800 rounded-2xl transition-all active:scale-90 shadow-xl"
-                              title="Inspect Receipt"
-                            >
-                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </button>
-                          </div>
+            <div className="space-y-12 max-w-6xl mx-auto">
+              {Object.entries(groupedHistory).map(([date, txs]) => (
+                <div key={date} className="animate-in slide-in-from-bottom-4 duration-500">
+                  <div className="flex items-center gap-4 mb-6">
+                    <h3 className="text-xl font-black text-gray-900 uppercase tracking-tighter">{date}</h3>
+                    <div className="h-px flex-1 bg-gray-200"></div>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white px-4 py-1 rounded-full border shadow-sm">
+                      {txs.length} Sales
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    {txs.map((tx) => (
+                      <div key={tx.id} className="bg-white rounded-3xl p-6 shadow-sm border border-transparent hover:border-blue-500 transition-all group flex items-center gap-8">
+                        <div className="w-20 h-20 bg-gray-50 rounded-2xl flex flex-col items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                          <span className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">TXID</span>
+                          <span className="text-sm font-black text-gray-900">#{tx.id}</span>
                         </div>
-                      ))}
-                   </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                             <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${tx.mode === SystemMode.RESTAURANT ? 'bg-orange-100 text-orange-600' : 'bg-purple-100 text-purple-600'}`}>
+                               {tx.mode}
+                             </span>
+                             <span className="text-[10px] font-bold text-gray-400 uppercase">
+                               {tx.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                             </span>
+                             {tx.couponApplied && (
+                               <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
+                                 5% Coupon
+                               </span>
+                             )}
+                          </div>
+                          <h4 className="text-lg font-black text-gray-900 uppercase truncate">
+                            {tx.customerName || 'Walk-in Customer'}
+                          </h4>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                            Sold by {tx.sellerName} • {tx.items.length} Items
+                          </p>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Paid</p>
+                          <p className="text-2xl font-black text-gray-900 tabular-nums">
+                            {currencySymbol}{tx.total.toLocaleString()}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => onReprint(tx)}
+                            className="p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                            title="Reprint Receipt"
+                          >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          </button>
+                          {currentStaff?.role === 'Manager' && (
+                            <button 
+                              onClick={() => onDeleteTransaction(tx.id)}
+                              className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                              title="Delete Transaction"
+                            >
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-10 bg-black border-t border-zinc-900 flex justify-between items-center shrink-0 shadow-[0_-20px_100px_rgba(0,0,0,0.8)] relative z-10">
-          <div className="flex gap-16">
-            <div>
-              <span className="text-[11px] font-black text-zinc-600 uppercase block tracking-[0.4em] mb-2">
-                Total Revenue ({modeFilter})
-              </span>
-              <div className="flex items-baseline gap-2">
-                 <span className="text-2xl font-black text-white opacity-40 leading-none">{currencySymbol}</span>
-                 <span className="text-6xl font-black text-white tabular-nums tracking-tighter leading-none">
-                   {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                 </span>
-              </div>
-            </div>
-            <div className="border-l border-zinc-900 pl-16">
-              <span className="text-[11px] font-black text-zinc-600 uppercase block tracking-[0.4em] mb-2">Filtered Count</span>
-              <span className="text-6xl font-black text-white tabular-nums tracking-tighter leading-none">{filteredHistory.length}</span>
-            </div>
-          </div>
-          <div className="flex gap-5">
-             <button className="px-10 py-6 bg-black border-2 border-zinc-800 text-white font-black rounded-3xl hover:border-white transition-all active:scale-95 uppercase tracking-widest text-xs shadow-2xl">
-               Print Z-Report
-             </button>
-             <button 
-               onClick={onClose}
-               className="px-14 py-6 bg-white text-black font-black rounded-3xl hover:bg-zinc-200 transition-all shadow-2xl active:scale-95 uppercase tracking-widest text-xs"
-             >
-               Return to POS
-             </button>
-          </div>
         </div>
       </div>
     </div>

@@ -29,7 +29,6 @@ import TokenRechargeModal from './components/TokenRechargeModal';
 import CRMModal from './components/CRMModal';
 import StaffManagementModal from './components/StaffManagementModal';
 import EditMobileOrderModal from './components/EditMobileOrderModal';
-import CustomerMenuView from './components/CustomerMenuView';
 import MasterDashboardModal from './components/MasterDashboardModal';
 import ProfitHistoryModal from './components/ProfitHistoryModal';
 
@@ -180,6 +179,10 @@ const App: React.FC = () => {
   const [whatsappCompatibilityMode, setWhatsappCompatibilityMode] = useState<boolean>(() => localStorage.getItem('cb_wa_compat') === 'true');
   const [thermalProxy, setThermalProxy] = useState(() => localStorage.getItem('cb_thermal_proxy') || '');
 
+  const [printerType, setPrinterType] = useState<'USB' | 'BLUETOOTH' | 'PROXY'>(() => (localStorage.getItem('cb_printer_type') as any) || 'USB');
+  const [firstTimeMessage, setFirstTimeMessage] = useState(() => localStorage.getItem('cb_first_time_msg') || 'Welcome to ClearBook! Thank you for your first purchase. Here is a 5% coupon for your next visit!');
+  const [businessName, setBusinessName] = useState(() => localStorage.getItem('cb_business_name') || 'Clear Book POS');
+
   const [isSyncing, setIsSyncing] = useState(false);
 
   const auditCheckpoints = useMemo<AuditCheckpoint[]>(() => {
@@ -297,10 +300,13 @@ const App: React.FC = () => {
       localStorage.setItem('cb_wa_compat', whatsappCompatibilityMode.toString());
       localStorage.setItem('cb_thermal_proxy', thermalProxy);
       localStorage.setItem('cb_mobile_orders', safeJsonStringify(mobileOrders));
+      localStorage.setItem('cb_printer_type', printerType);
+      localStorage.setItem('cb_first_time_msg', firstTimeMessage);
+      localStorage.setItem('cb_business_name', businessName);
     } catch (e) {
       console.error("Failed to save state to localStorage:", e);
     }
-  }, [staffList, attendantsList, products, history, customers, tokens, whatsappTokens, cart, activeTableLabel, currencySymbol, whatsappApi, whatsappMethod, whatsappCompatibilityMode, thermalProxy, mobileOrders]);
+  }, [staffList, attendantsList, products, history, customers, tokens, whatsappTokens, cart, activeTableLabel, currencySymbol, whatsappApi, whatsappMethod, whatsappCompatibilityMode, thermalProxy, mobileOrders, printerType, firstTimeMessage, businessName]);
 
   useEffect(() => {
     if (!activeUid) return;
@@ -373,7 +379,6 @@ const App: React.FC = () => {
       db.collection("pos_accounts").doc(user.uid).set({
         email: user.email,
         lastLogin: firebase.firestore.Timestamp.now(),
-        businessName: user.displayName || user.email?.split('@')[0] || 'Business'
       }, { merge: true }).catch(e => console.warn("Registry sync failed", e));
     }
   }, [user, activeUid, impersonatedUid]);
@@ -389,13 +394,13 @@ const App: React.FC = () => {
         db.collection("pos_accounts").doc(u.uid).set({
           email: u.email,
           lastLogin: firebase.firestore.Timestamp.now(),
-          businessName: u.displayName || u.email?.split('@')[0] || 'Business'
         }, { merge: true }).catch(e => console.warn("Background registry sync failed", e));
 
         // Check account status for the active UID (don't block UI)
         db.collection("pos_accounts").doc(uid).get().then(userDoc => {
           if (userDoc.exists) {
             setAccountStatus(userDoc.data()?.status || 'ACTIVE');
+            if (userDoc.data()?.businessName) setBusinessName(userDoc.data()?.businessName);
           }
         }).catch(e => console.warn("Background status check failed", e));
 
@@ -424,7 +429,7 @@ const App: React.FC = () => {
     alert("Returned to Master Account");
   };
 
-  const handleSaveCustomer = async (phone: string, name: string, transactionId?: string) => {
+  const handleSaveCustomer = async (phone: string, name: string, transactionId?: string, couponEarned: number = 0, couponRedeemed: number = 0) => {
     if (!phone) return;
     const now = new Date();
     const existing = customers.find(c => c.phone === phone);
@@ -432,7 +437,8 @@ const App: React.FC = () => {
       phone,
       name: name || existing?.name || '',
       lastVisit: now,
-      visitCount: (existing?.visitCount || 0) + 1
+      visitCount: (existing?.visitCount || 0) + 1,
+      couponBalance: (existing?.couponBalance || 0) + couponEarned - couponRedeemed
     };
     
     setCustomers(prev => {
@@ -445,7 +451,8 @@ const App: React.FC = () => {
         await db.collection("users").doc(activeUid).collection("customers").doc(phone).set({
           name: updatedCustomer.name,
           lastVisit: firebase.firestore.Timestamp.fromDate(now),
-          visitCount: updatedCustomer.visitCount
+          visitCount: updatedCustomer.visitCount,
+          couponBalance: updatedCustomer.couponBalance
         }, { merge: true });
 
         // Associate this customer with the transaction if provided
@@ -453,13 +460,44 @@ const App: React.FC = () => {
           // Update local history state instantly
           setHistory(prev => prev.map(tx => tx.id === transactionId ? { ...tx, customerName: name, customerPhone: phone } : tx));
           // Update cloud Firestore
-          await db.collection("users").doc(activeUid).collection("history").doc(transactionId).update({
+          await db.collection("users").doc(activeUid).collection("history").doc(transactionId).set({
              customerName: name,
              customerPhone: phone
-          });
+          }, { merge: true });
         }
       } catch (e) { console.error("Customer sync failed", e); }
     }
+  };
+
+  const handleSendWhatsAppReceipt = (phone: string, name: string) => {
+    if (whatsappTokens <= 0) {
+      alert("INSUFFICIENT WA TOKENS: Please recharge your balance.");
+      return;
+    }
+
+    const receipt = history.find(h => h.id === showReceipt?.id);
+    if (!receipt) return;
+
+    const itemsText = receipt.items.map(item => 
+      `• ${item.quantity}${item.type === 'WEIGHT' ? 'kg' : 'x'} ${item.name} - ${currencySymbol}${(item.price * item.quantity).toFixed(2)}`
+    ).join('\n');
+
+    const message = `*CLEARBOOK DIGITAL RECEIPT*\n` +
+                    `---------------------------\n` +
+                    `*ORDER ID:* #${receipt.id}\n` +
+                    `*CUSTOMER:* ${name.toUpperCase()}\n` +
+                    `*PHONE:* ${phone}\n` +
+                    `---------------------------\n` +
+                    `*ITEMS PURCHASED:*\n` +
+                    `${itemsText}\n` +
+                    `---------------------------\n` +
+                    `*TOTAL PAID: ${currencySymbol}${receipt.total.toFixed(2)}*\n` +
+                    `---------------------------\n` +
+                    `_Thank you for your repeat patronage!_`;
+
+    const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+    handleDeductWhatsAppToken();
   };
 
   const handleRestoreData = (data: any) => {
@@ -651,10 +689,22 @@ const App: React.FC = () => {
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
 
-  const handleFinalizeSale = async (payments: PaymentRecord[]) => {
+  const handleFinalizeSale = async (payments: PaymentRecord[], customerName?: string, discount: number = 0, customerPhone?: string) => {
     if (tokens <= 0) { alert("Terminal Locked: No Tokens Remaining"); return; }
     const transactionId = Math.random().toString(36).substr(2, 5).toUpperCase();
     const now = new Date();
+    
+    const finalSubtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const finalTotal = finalSubtotal - discount;
+
+    // Calculate coupon earned (5% of final total)
+    const couponEarned = finalTotal * 0.05;
+
+    const itemsWithValidatedCost = cart.map(item => ({
+      ...item,
+      costPrice: typeof item.costPrice === 'number' && !isNaN(item.costPrice) ? item.costPrice : 0,
+    }));
+
     const transactionData: TransactionRecord = {
       id: transactionId,
       timestamp: now,
@@ -662,11 +712,16 @@ const App: React.FC = () => {
       serverId: currentServer?.id,
       serverName: currentServer?.name,
       tableLabel: activeTableLabel,
-      items: [...cart],
+      items: itemsWithValidatedCost,
       payments: payments,
-      total: total,
+      total: finalTotal,
+      subtotal: finalSubtotal,
+      discount: discount,
+      couponApplied: discount > 0,
       mode: systemMode,
       offline: !isOnline,
+      customerName: customerName || undefined,
+      customerPhone: customerPhone || undefined,
     };
     
     // Prepend to history for instant UI update
@@ -684,6 +739,11 @@ const App: React.FC = () => {
     setCart([]);
     setCurrentServer(null);
     setActiveTableLabel('');
+
+    // Update customer balance if phone is provided
+    if (customerPhone) {
+      handleSaveCustomer(customerPhone, customerName || '', transactionId, couponEarned, discount);
+    }
     
     if (activeUid) {
       setIsSyncing(true);
@@ -698,10 +758,34 @@ const App: React.FC = () => {
         });
         await Promise.all(stockUpdates);
 
-        const firestorePayload = sanitize({
-          ...transactionData,
-          timestamp: firebase.firestore.Timestamp.fromDate(now)
-        });
+        const firestorePayload = {
+          id: transactionData.id,
+          timestamp: firebase.firestore.Timestamp.fromDate(transactionData.timestamp),
+          sellerName: transactionData.sellerName,
+          serverId: transactionData.serverId || null,
+          serverName: transactionData.serverName || null,
+          tableLabel: transactionData.tableLabel || null,
+          items: transactionData.items.map(item => ({
+            cartId: item.cartId,
+            productId: item.productId,
+            name: item.name,
+            price: item.price,
+            costPrice: item.costPrice,
+            quantity: item.quantity,
+            type: item.type,
+            selectedModifiers: item.selectedModifiers.map(m => ({ id: m.id, name: m.name, price: m.price })),
+            taxRate: item.taxRate,
+          })),
+          payments: transactionData.payments.map(p => ({ method: p.method, amount: p.amount })),
+          total: transactionData.total,
+          subtotal: transactionData.subtotal,
+          discount: transactionData.discount || 0,
+          couponApplied: transactionData.couponApplied || false,
+          mode: transactionData.mode,
+          offline: transactionData.offline || false,
+          customerName: transactionData.customerName || null,
+          customerPhone: transactionData.customerPhone || null,
+        };
         await db.collection("users").doc(activeUid).collection("history").doc(transactionId).set(firestorePayload);
         await db.collection("users").doc(activeUid).collection("config").doc("terminal").update({ tokens: Math.max(0, tokens - 1) });
       } catch (e) {
@@ -733,6 +817,60 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteTransaction = async (transactionId: string) => {
+    const transactionToDelete = history.find(tx => tx.id === transactionId);
+    if (!transactionToDelete) return;
+
+    // Ask for confirmation
+    if (!window.confirm(`Are you sure you want to permanently delete transaction #${transactionId}? This action cannot be undone.`)) {
+      return;
+    }
+
+    // 1. Reverse stock levels
+    const stockUpdates: { [productId: string]: number } = {};
+    transactionToDelete.items.forEach(item => {
+      stockUpdates[item.productId] = (stockUpdates[item.productId] || 0) + item.quantity;
+    });
+
+    setProducts(prevProducts => 
+      prevProducts.map(p => 
+        stockUpdates[p.id] ? { ...p, stock: p.stock + stockUpdates[p.id] } : p
+      )
+    );
+
+    // 2. Remove transaction from local state
+    setHistory(prev => prev.filter(tx => tx.id !== transactionId));
+
+    // 3. Sync changes to Firestore
+    if (activeUid) {
+      setIsSyncing(true);
+      try {
+        // Sync stock updates
+        const stockUpdatePromises = Object.keys(stockUpdates).map(productId => {
+          const product = products.find(p => p.id === productId);
+          if (product) {
+            const newStock = product.stock + stockUpdates[productId];
+            return db.collection("users").doc(activeUid).collection("products").doc(productId).update({ stock: newStock });
+          }
+          return Promise.resolve();
+        });
+        await Promise.all(stockUpdatePromises);
+
+        // Delete transaction from Firestore
+        await db.collection("users").doc(activeUid).collection("history").doc(transactionId).delete();
+        
+        alert(`Transaction #${transactionId} has been deleted and stock levels have been restored.`);
+
+      } catch (e) {
+        console.error("Transaction deletion sync failed", e);
+        // If sync fails, we should ideally revert local state changes, but for now, we'll just alert the user.
+        alert("Error deleting transaction from the cloud. Please check your connection and try again.");
+      } finally {
+        setIsSyncing(false);
+      }
+    }
+  };
+
   const handleSendMobileOrder = async (order: MobileOrder) => {
     if (activeUid) {
       const firestorePayload = sanitize({
@@ -745,14 +883,17 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateBusinessName = async (name: string) => {
+    setBusinessName(name);
+    if (activeUid) {
+      await db.collection("pos_accounts").doc(activeUid).set({ businessName: name }, { merge: true });
+    }
+  };
+
   const handleLogout = () => { auth.signOut(); setCurrentStaff(null); setView(AppView.LOGIN); };
 
   if (authLoading) return <div className="h-screen bg-gray-900 flex items-center justify-center"><div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
   
-  if (view === AppView.CUSTOMER_MENU) {
-    return <CustomerMenuView products={products} currencySymbol={currencySymbol} onSendOrder={handleSendMobileOrder} isTerminalLocked={isTerminalLocked} />;
-  }
-
   if (view === AppView.LOGIN) return <LoginScreen setSystemMode={setSystemMode} onPasswordRecovery={() => {}} />;
   if (view === AppView.STAFF_LOGIN) return <StaffLoginScreen staffList={staffList} onStaffAuthenticated={(s) => { setCurrentStaff(s); setView(AppView.SALES); }} onLogoutManager={handleLogout} />;
 
@@ -906,9 +1047,30 @@ const App: React.FC = () => {
         onOpenProfitHistory={() => setShowProfitHistory(true)}
       />
 
-      {showCheckout && <CheckoutModal total={total} currencySymbol={currencySymbol} onClose={() => setShowCheckout(false)} onComplete={handleFinalizeSale} />}
-      {showHistory && <HistoryModal history={history} currencySymbol={currencySymbol} onClose={() => setShowHistory(false)} onVoid={() => {}} onViewReceipt={setShowReceipt} isManager={currentStaff?.role === 'Manager'} />}
-      {showSettings && <SettingsModal currencySymbol={currencySymbol} onSetCurrency={setCurrencySymbol} whatsappApi={whatsappApi} onSetWhatsappApi={setWhatsappApi} whatsappMethod={whatsappMethod} onSetWhatsappMethod={setWhatsappMethod} whatsappCompatibilityMode={whatsappCompatibilityMode} onSetWhatsappCompatibilityMode={setWhatsappCompatibilityMode} thermalProxy={thermalProxy} onSetThermalProxy={setThermalProxy} onOpenRecharge={() => setShowTokenRecharge(true)} onSimulateOrder={() => {}} onClose={() => setShowSettings(false)} onRestoreData={handleRestoreData} />}
+      {showCheckout && <CheckoutModal total={total} currencySymbol={currencySymbol} customers={customers} onClose={() => setShowCheckout(false)} onComplete={handleFinalizeSale} />}
+      {showHistory && <HistoryModal history={history} currencySymbol={currencySymbol} onClose={() => setShowHistory(false)} onReprint={setShowReceipt} onDeleteTransaction={handleDeleteTransaction} currentStaff={currentStaff} />}
+      {showSettings && <SettingsModal 
+        currencySymbol={currencySymbol} 
+        onSetCurrency={setCurrencySymbol} 
+        whatsappApi={whatsappApi} 
+        onSetWhatsappApi={setWhatsappApi} 
+        whatsappMethod={whatsappMethod} 
+        onSetWhatsappMethod={setWhatsappMethod} 
+        whatsappCompatibilityMode={whatsappCompatibilityMode} 
+        onSetWhatsappCompatibilityMode={setWhatsappCompatibilityMode} 
+        thermalProxy={thermalProxy} 
+        onSetThermalProxy={setThermalProxy} 
+        onOpenRecharge={() => setShowTokenRecharge(true)} 
+        onSimulateOrder={() => {}} 
+        onClose={() => setShowSettings(false)} 
+        onRestoreData={handleRestoreData} 
+        printerType={printerType}
+        onSetPrinterType={setPrinterType}
+        firstTimeMessage={firstTimeMessage}
+        onSetFirstTimeMessage={setFirstTimeMessage}
+        businessName={businessName}
+        onSetBusinessName={handleUpdateBusinessName}
+      />}
       {showInventory && <InventoryModal products={products} history={history} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onClose={() => setShowInventory(false)} isMaster={isMasterMode} />}
       {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} />}
       {editingProduct && <EditProductModal product={editingProduct} onUpdate={(p) => { handleUpdateProduct(p); setEditingProduct(null); }} onClose={() => setEditingProduct(null)} currencySymbol={currencySymbol} />}
@@ -929,6 +1091,9 @@ const App: React.FC = () => {
           whatsappTokens={whatsappTokens}
           onDeductToken={handleDeductWhatsAppToken}
           customers={customers}
+          printerType={printerType}
+          firstTimeMessageTemplate={firstTimeMessage}
+          businessName={businessName}
         />
       )}
       {showServerSelect && <ServerModal attendants={attendantsList} onSelect={setCurrentServer} onClose={() => setShowServerSelect(false)} />}

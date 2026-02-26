@@ -16,6 +16,9 @@ interface ReceiptModalProps {
   whatsappTokens: number; 
   onDeductToken?: () => void; 
   customers?: Customer[];
+  printerType?: 'USB' | 'BLUETOOTH' | 'PROXY';
+  firstTimeMessageTemplate?: string;
+  businessName?: string;
 }
 
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ 
@@ -31,7 +34,10 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
   thermalProxy,
   whatsappTokens,
   onDeductToken,
-  customers = []
+  customers = [],
+  printerType = 'USB',
+  firstTimeMessageTemplate,
+  businessName = 'Clear Book POS'
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -61,21 +67,40 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   const handlePrint = async () => {
     setIsPrinting(true);
-    if (thermalProxy && thermalProxy.trim() !== '') {
+    
+    if (printerType === 'PROXY' && thermalProxy && thermalProxy.trim() !== '') {
         try {
+          // Robust circular reference handler
+          const cache = new Set();
           const safePayload = JSON.stringify({
             id: transaction.id,
             timestamp: transaction.timestamp,
             staff: staff?.name || 'Terminal',
             items: transaction.items,
             total: transaction.total,
+            subtotal: transaction.subtotal,
+            discount: transaction.discount,
             currency: currencySymbol,
             customerName: customerName || transaction.customerName || 'Walk-in',
-            customerPhone: phoneNumber || transaction.customerPhone || 'N/A'
+            customerPhone: phoneNumber || transaction.customerPhone || 'N/A',
+            businessName: businessName
           }, (key, value) => {
             if (typeof value === 'object' && value !== null) {
-              if (value.constructor && value.constructor.name === 'DocumentReference') return value.path;
-              if (value.constructor && value.constructor.name === 'Timestamp') return value.toDate().toISOString();
+              if (cache.has(value)) {
+                // Circular reference found, discard key
+                return;
+              }
+              cache.add(value);
+              
+              // Handle Firestore types safely if possible, otherwise let them be stringified as objects
+              // We check for toDate/toDateString methods which are common in Timestamp-like objects
+              if (value.toDate && typeof value.toDate === 'function') {
+                 return value.toDate().toISOString();
+              }
+              // Check for path property which is common in DocumentReference-like objects
+              if (value.path && typeof value.path === 'string' && value.firestore) {
+                 return value.path;
+              }
             }
             return value;
           });
@@ -91,6 +116,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
         } catch (e) {
           console.error("Hardware bridge silent print failed.");
         }
+    } else if (printerType === 'BLUETOOTH') {
+        alert("Bluetooth Printing: Please ensure your printer is paired and use the system print dialog.");
     }
     
     setTimeout(() => {
@@ -132,12 +159,10 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
     try {
       const payload = JSON.stringify({
-        action: "pos_receipt",
+        action: "thank_you_message",
         id: transaction.id,
         customerName: name,
         phone: phone,
-        total: transaction.total,
-        items: transaction.items
       });
 
       const response = await fetch(whatsappApi!.trim(), {
@@ -155,31 +180,15 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
   };
 
   const triggerDirectWhatsApp = (name: string, phone: string) => {
-    const itemsText = transaction.items.map(item => 
-      `• ${item.quantity}${item.type === 'WEIGHT' ? 'kg' : 'x'} ${item.name} - ${currencySymbol}${(item.price * item.quantity).toFixed(2)}`
-    ).join('\n');
-
-    const message = `*CLEARBOOK DIGITAL RECEIPT*\n` +
-                    `---------------------------\n` +
-                    `*ORDER ID:* #${transaction.id}\n` +
-                    `*CUSTOMER:* ${name.toUpperCase()}\n` +
-                    `*PHONE:* ${phone}\n` +
-                    `---------------------------\n` +
-                    `*ITEMS PURCHASED:*\n` +
-                    `${itemsText}\n` +
-                    `---------------------------\n` +
-                    `*TOTAL PAID: ${currencySymbol}${transaction.total.toFixed(2)}*\n` +
-                    `---------------------------\n` +
-                    `_Thank you for your repeat patronage!_`;
-
+    const message = `Hello ${name}, thank you for your visit! We appreciate your business.`;
     const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
 
   return (
-    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[500] p-4 sm:p-6 backdrop-blur-xl overflow-y-auto">
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[1100] p-4 sm:p-6 backdrop-blur-xl overflow-y-auto">
       <div className="bg-white rounded-[3rem] w-full max-w-xl overflow-hidden flex flex-col shadow-2xl relative max-h-[95vh]">
-        <button onClick={onClose} className="absolute top-6 right-6 z-[510] p-2 bg-black/10 rounded-full text-white/80 hover:text-white transition-all">
+        <button onClick={onClose} className="absolute top-6 right-6 z-[1110] p-2 bg-black/10 rounded-full text-white/80 hover:text-white transition-all">
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
 
@@ -191,35 +200,58 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50 flex flex-col items-center">
-          <div className="bg-white w-full p-8 shadow-2xl border-t-[12px] border-gray-900 font-mono text-xs text-gray-800 rounded-b-2xl flex flex-col">
+          <div className="bg-white w-full p-8 shadow-2xl border-t-[12px] border-black font-mono text-xs text-black rounded-b-2xl flex flex-col">
              <div className="text-center mb-6">
-                <div className="font-black text-4xl tracking-tighter text-gray-900 uppercase mb-4">Clear Book POS</div>
-                <div className="uppercase font-black text-3xl text-gray-900 mt-4 border-y-4 border-gray-900 py-6 leading-tight">
+                <div className="font-black text-2xl tracking-tighter text-black uppercase mb-2">{businessName}</div>
+                <div className="uppercase font-black text-base text-black mt-2 border-y-2 border-black py-3 leading-tight">
                    {transaction.timestamp.toLocaleDateString()} <br/>
                    {transaction.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </div>
                 {(transaction.customerName || customerName) && (
-                  <div className="mt-8 bg-blue-600 py-4 px-8 rounded-2xl text-white font-black uppercase text-base shadow-lg">
+                  <div className="mt-4 border-2 border-black py-2 px-4 rounded-xl text-black font-black uppercase text-sm shadow-none">
                      Customer: {transaction.customerName || customerName}
                   </div>
                 )}
              </div>
 
-             <div className="space-y-4 mb-6 border-b-2 border-dashed border-gray-400 pb-8 mt-4">
+             <div className="space-y-2 mb-4 border-b-2 border-dashed border-black pb-4 mt-2 text-black">
                 {transaction.items.map((item, idx) => (
-                   <div key={idx} className="flex justify-between items-start gap-4 text-xl font-black">
+                   <div key={idx} className="flex justify-between items-start gap-2 text-sm font-bold text-black">
                       <span className="flex-1">{item.quantity}{item.type === 'WEIGHT' ? 'kg' : 'x'} {item.name}</span>
                       <span className="whitespace-nowrap">{currencySymbol}{(item.price * item.quantity).toFixed(2)}</span>
                    </div>
                 ))}
              </div>
 
-             <div className="bg-gray-900 text-white p-10 rounded-[2.5rem] shrink-0 flex justify-between items-center shadow-2xl mt-4">
-               <span className="text-base opacity-60 uppercase tracking-widest font-black">Amount Paid</span>
-               <span className="text-6xl font-black tabular-nums">{currencySymbol}{transaction.total.toFixed(2)}</span>
+             <div className="space-y-1 mb-4 text-xs font-bold uppercase text-black">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>{currencySymbol}{(transaction.subtotal || transaction.total).toFixed(2)}</span>
+                </div>
+                {transaction.discount && transaction.discount > 0 && (
+                  <div className="flex justify-between text-black">
+                    <span>Coupon Redeemed</span>
+                    <span>-{currencySymbol}{transaction.discount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-black pt-1 border-t border-black">
+                  <span>Coupon Earned (5%)</span>
+                  <span>+{currencySymbol}{(transaction.total * 0.05).toFixed(2)}</span>
+                </div>
+                {phoneNumber && (
+                  <div className="flex justify-between text-black font-black">
+                    <span>Total Coupon Balance</span>
+                    <span>{currencySymbol}{((customers.find(c => c.phone === phoneNumber)?.couponBalance || 0)).toFixed(2)}</span>
+                  </div>
+                )}
              </div>
 
-             <div className="mt-12 text-center text-4xl text-gray-900 uppercase font-black border-t-4 border-gray-900 pt-10 tracking-tighter leading-none">
+             <div className="bg-white border-2 border-black text-black p-6 rounded-2xl shrink-0 flex justify-between items-center shadow-none mt-2">
+               <span className="text-xs uppercase tracking-widest font-black">Total Paid</span>
+               <span className="text-3xl font-black tabular-nums">{currencySymbol}{transaction.total.toFixed(2)}</span>
+             </div>
+
+             <div className="mt-8 text-center text-base text-black uppercase font-black border-t-2 border-black pt-6 tracking-tighter leading-none">
                 Thank you for <br/> patronizing us!
              </div>
           </div>
@@ -227,8 +259,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
         <div className="p-8 bg-white border-t flex flex-col gap-4">
            <div className="grid grid-cols-2 gap-4">
-             <button onClick={handlePrint} disabled={isPrinting} className="py-5 rounded-2xl font-black text-xs bg-gray-900 text-white hover:bg-black transition-all uppercase">Thermal Print</button>
-             <button onClick={() => setShowWhatsAppInput(true)} className="py-5 bg-green-600 text-white rounded-2xl font-black text-xs hover:bg-green-700 transition-all uppercase">Send WhatsApp</button>
+            <button onClick={handlePrint} disabled={isPrinting} className="py-5 rounded-2xl font-black text-[10px] bg-gray-900 text-white hover:bg-black transition-all uppercase">Thermal Print</button>
+             <button onClick={() => setShowWhatsAppInput(true)} className="py-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] hover:bg-blue-700 transition-all uppercase">Send Message</button>
            </div>
            <button onClick={onClose} className="w-full py-6 bg-blue-600 text-white rounded-[2rem] font-black text-2xl hover:bg-blue-500 transition-all uppercase tracking-tight shadow-2xl">Ready for Next Sale</button>
         </div>

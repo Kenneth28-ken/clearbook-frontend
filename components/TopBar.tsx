@@ -32,7 +32,7 @@ interface TopBarProps {
 }
 
 const TopBar: React.FC<TopBarProps> = ({ 
-  staff, time, onLogout, onSwitchStaff, onOpenSettings, onOpenInventory, onOpenServerHub, onOpenTokenRecharge, onOpenCRM, onSimulateOrder, lowStockCount, isEditMode, onToggleEditMode, onOpenQRCode, onOpenMobileOrders, mobileOrderCount, systemMode, tokens, whatsappTokens, isTerminalLocked, isOnline, isSyncing, isMaster, onOpenStaffManagement, onOpenMasterDashboard, onOpenPrismaticAudit 
+  staff, time, onLogout, onSwitchStaff, onOpenSettings, onOpenInventory, onOpenServerHub, onOpenTokenRecharge, onOpenCRM, onSimulateOrder, lowStockCount, isEditMode, onToggleEditMode, onOpenQRCode, onOpenMobileOrders, mobileOrderCount, systemMode, tokens, whatsappTokens, isTerminalLocked, isOnline, isSyncing, isMaster, onOpenStaffManagement, onOpenMasterDashboard, onOpenPrismaticAudit
 }) => {
   return (
     <header className={`h-16 flex items-center justify-between px-6 shrink-0 border-b z-50 transition-colors ${isTerminalLocked ? 'bg-red-900 border-red-800' : 'bg-gray-800 border-gray-700'}`}>

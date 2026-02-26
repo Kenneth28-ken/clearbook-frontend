@@ -109,6 +109,7 @@ const CRMModal: React.FC<CRMModalProps> = ({ customers, onClose, whatsappApi, on
                          </div>
                          <div className="col-span-3">
                             <div className="text-sm font-black tabular-nums text-gray-700">{customer.phone}</div>
+                            <div className="text-[10px] font-black text-blue-600 uppercase mt-1">Bal: {(customer.couponBalance || 0).toFixed(2)}</div>
                          </div>
                          <div className="col-span-3">
                             <div className="flex items-center gap-2">
