@@ -205,7 +205,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ history, onClose, onReprint
                              </span>
                              {tx.couponApplied && (
                                <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
-                                 5% Coupon
+                                 {tx.couponRate !== undefined ? tx.couponRate : 5}% Coupon
                                </span>
                              )}
                           </div>

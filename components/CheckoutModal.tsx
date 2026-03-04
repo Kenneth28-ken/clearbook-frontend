@@ -5,7 +5,7 @@ import { PaymentRecord, Customer } from '../types';
 interface CheckoutModalProps {
   total: number;
   onClose: () => void;
-  onComplete: (payments: PaymentRecord[], customerName: string, discount: number, customerPhone?: string) => void;
+  onComplete: (payments: PaymentRecord[], customerName: string, discount: number, customerPhone?: string, couponRedeemed?: number) => void;
   currencySymbol: string;
   customers: Customer[];
 }
@@ -17,6 +17,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [appliedCouponAmount, setAppliedCouponAmount] = useState(0);
+  const [manualDiscount, setManualDiscount] = useState('0');
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
 
   const matchedCustomers = useMemo(() => {
     if (!customerSearch.trim()) return [];
@@ -26,22 +28,40 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
     ).slice(0, 5);
   }, [customerSearch, customers]);
 
-  const total = initialTotal - appliedCouponAmount;
+  const parsedManualDiscount = parseFloat(manualDiscount) || 0;
+  
+  // Total after manual discount
+  const totalAfterDiscount = Math.max(0, initialTotal - parsedManualDiscount);
+  
+  // Total after manual discount AND coupon
+  const total = Math.max(0, totalAfterDiscount - appliedCouponAmount);
 
   const paidAmount = payments.reduce((acc, p) => acc + p.amount, 0);
   const remaining = Math.max(0, total - paidAmount);
   const change = Math.max(0, paidAmount - total);
 
   const handleNumClick = (val: string) => {
-    setCurrentAmount(prev => {
-      if (prev === '0' && val !== '.') return val;
-      if (val === '.' && prev.includes('.')) return prev;
-      return prev + val;
-    });
+    if (isApplyingDiscount) {
+      setManualDiscount(prev => {
+        if (prev === '0' && val !== '.') return val;
+        if (val === '.' && prev.includes('.')) return prev;
+        return prev + val;
+      });
+    } else {
+      setCurrentAmount(prev => {
+        if (prev === '0' && val !== '.') return val;
+        if (val === '.' && prev.includes('.')) return prev;
+        return prev + val;
+      });
+    }
   };
 
   const handleBackspace = () => {
-    setCurrentAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+    if (isApplyingDiscount) {
+      setManualDiscount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+    } else {
+      setCurrentAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+    }
   };
 
   const addPayment = () => {
@@ -54,16 +74,26 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
 
   const handleComplete = () => {
     if (paidAmount >= total) {
-      onComplete(payments, selectedCustomer?.name || customerSearch, appliedCouponAmount, selectedCustomer?.phone || (customerSearch.match(/^\d+$/) ? customerSearch : undefined));
+      const totalDiscount = parsedManualDiscount + appliedCouponAmount;
+      onComplete(payments, selectedCustomer?.name || customerSearch, totalDiscount, selectedCustomer?.phone || (customerSearch.match(/^\d+$/) ? customerSearch : undefined), appliedCouponAmount);
     }
   };
 
   const applyCoupon = () => {
     if (selectedCustomer && (selectedCustomer.couponBalance || 0) > 0) {
-      const amountToApply = Math.min(selectedCustomer.couponBalance || 0, initialTotal);
+      // Apply coupon against the total *after* manual discount
+      const amountToApply = Math.min(selectedCustomer.couponBalance || 0, totalAfterDiscount);
       setAppliedCouponAmount(amountToApply);
     }
   };
+
+  // Recalculate applied coupon if manual discount changes and makes totalAfterDiscount less than appliedCouponAmount
+  React.useEffect(() => {
+    if (appliedCouponAmount > totalAfterDiscount) {
+      setAppliedCouponAmount(totalAfterDiscount);
+    }
+  }, [totalAfterDiscount, appliedCouponAmount]);
+
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 sm:p-10 backdrop-blur-sm overflow-y-auto">
@@ -122,11 +152,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
                    </div>
                    <button 
                      onClick={applyCoupon}
-                     disabled={appliedCouponAmount > 0 || (selectedCustomer.couponBalance || 0) <= 0}
+                     disabled={appliedCouponAmount > 0 || (selectedCustomer.couponBalance || 0) <= 0 || totalAfterDiscount <= 0}
                      className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${
                        appliedCouponAmount > 0 
                         ? 'bg-green-600 text-white' 
-                        : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed'
                      }`}
                    >
                      {appliedCouponAmount > 0 ? 'Applied' : 'Apply'}
@@ -138,11 +168,21 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
 
              <div>
                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">Subtotal</label>
-               <div className={`text-xl font-black tabular-nums leading-none ${appliedCouponAmount > 0 ? 'text-gray-400 line-through opacity-50' : 'text-gray-900'}`}>
+               <div className={`text-xl font-black tabular-nums leading-none ${appliedCouponAmount > 0 || parsedManualDiscount > 0 ? 'text-gray-400 line-through opacity-50' : 'text-gray-900'}`}>
                  <span className="text-sm mr-1">{currencySymbol}</span>
                  {initialTotal.toFixed(2)}
                </div>
              </div>
+
+             {parsedManualDiscount > 0 && (
+               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 animate-in slide-in-from-top-2">
+                 <label className="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] block mb-1">Manual Discount</label>
+                 <div className="text-lg font-black text-orange-700 tabular-nums leading-none">
+                   -<span className="text-sm mr-1">{currencySymbol}</span>
+                   {parsedManualDiscount.toFixed(2)}
+                 </div>
+               </div>
+             )}
 
              {appliedCouponAmount > 0 && (
                <div className="bg-green-50 p-3 rounded-xl border border-green-100 animate-in slide-in-from-top-2">
@@ -213,9 +253,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
             ].map((method) => (
               <button
                 key={method.id}
-                onClick={() => setActiveMethod(method.id as any)}
+                onClick={() => { setActiveMethod(method.id as any); setIsApplyingDiscount(false); }}
                 className={`flex-1 py-4 rounded-xl font-black text-xs uppercase tracking-widest border-2 transition-all active:scale-95 ${
-                  activeMethod === method.id 
+                  activeMethod === method.id && !isApplyingDiscount
                     ? `border-${method.color}-600 bg-${method.color}-50 text-${method.color}-700 shadow-lg` 
                     : 'border-gray-100 text-gray-400 hover:bg-gray-50'
                 }`}
@@ -223,17 +263,31 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
                 {method.label}
               </button>
             ))}
+            <button
+              onClick={() => setIsApplyingDiscount(true)}
+              className={`flex-1 py-4 rounded-xl font-black text-xs uppercase tracking-widest border-2 transition-all active:scale-95 ${
+                isApplyingDiscount
+                  ? `border-orange-600 bg-orange-50 text-orange-700 shadow-lg` 
+                  : 'border-gray-100 text-gray-400 hover:bg-gray-50'
+              }`}
+            >
+              DISCOUNT
+            </button>
           </div>
 
           <div className="flex-1 flex flex-col gap-4">
             <div className="shrink-0">
               <div 
-                className="p-6 rounded-2xl flex justify-between items-center transition-all border-4 bg-gray-900 text-white border-blue-500 shadow-xl"
+                className={`p-6 rounded-2xl flex justify-between items-center transition-all border-4 shadow-xl ${
+                  isApplyingDiscount ? 'bg-orange-50 border-orange-500 text-orange-900' : 'bg-gray-900 text-white border-blue-500'
+                }`}
               >
-                 <span className="text-sm font-black uppercase tracking-widest opacity-40">Entry</span>
+                 <span className="text-sm font-black uppercase tracking-widest opacity-40">
+                   {isApplyingDiscount ? 'Enter Discount' : 'Entry'}
+                 </span>
                  <div className="flex items-baseline gap-2">
                    <span className="text-xl font-black opacity-30">{currencySymbol}</span>
-                   <span className="text-5xl font-black tabular-nums">{currentAmount}</span>
+                   <span className="text-5xl font-black tabular-nums">{isApplyingDiscount ? manualDiscount : currentAmount}</span>
                  </div>
               </div>
             </div>
@@ -249,7 +303,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
                     {val}
                   </button>
                 ))}
-                <button onClick={() => setCurrentAmount('0')} className="bg-red-50 text-red-600 rounded-xl text-lg font-black border border-red-100">CLR</button>
+                <button onClick={() => isApplyingDiscount ? setManualDiscount('0') : setCurrentAmount('0')} className="bg-red-50 text-red-600 rounded-xl text-lg font-black border border-red-100">CLR</button>
                 <button onClick={() => handleNumClick('0')} className="bg-gray-50 border border-gray-100 rounded-xl text-3xl font-black text-gray-900">0</button>
                 <button onClick={handleBackspace} className="bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-gray-900">
                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -258,19 +312,31 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
                 </button>
               </div>
 
-              <button 
-                onClick={addPayment}
-                className={`w-full py-6 rounded-2xl text-xl font-black flex items-center justify-center gap-4 shadow-xl transition-all active:scale-95 border-b-4 ${
-                  activeMethod === 'CASH' ? 'bg-green-600 border-green-800 text-white' : 
-                  activeMethod === 'CARD' ? 'bg-blue-600 border-blue-800 text-white' : 
-                  'bg-orange-600 border-orange-800 text-gray-900'
-                }`}
-              >
-                <span>CONFIRM {activeMethod}</span>
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                </svg>
-              </button>
+              {isApplyingDiscount ? (
+                <button 
+                  onClick={() => setIsApplyingDiscount(false)}
+                  className="w-full py-6 rounded-2xl text-xl font-black flex items-center justify-center gap-4 shadow-xl transition-all active:scale-95 border-b-4 bg-orange-600 border-orange-800 text-white"
+                >
+                  <span>APPLY DISCOUNT</span>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              ) : (
+                <button 
+                  onClick={addPayment}
+                  className={`w-full py-6 rounded-2xl text-xl font-black flex items-center justify-center gap-4 shadow-xl transition-all active:scale-95 border-b-4 ${
+                    activeMethod === 'CASH' ? 'bg-green-600 border-green-800 text-white' : 
+                    activeMethod === 'CARD' ? 'bg-blue-600 border-blue-800 text-white' : 
+                    'bg-orange-600 border-orange-800 text-gray-900'
+                  }`}
+                >
+                  <span>CONFIRM {activeMethod}</span>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </div>

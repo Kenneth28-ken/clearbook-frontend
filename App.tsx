@@ -106,7 +106,7 @@ const App: React.FC = () => {
   });
   const [couponRate, setCouponRate] = useState<number>(() => {
     const saved = localStorage.getItem('cb_couponRate');
-    return saved ? parseFloat(saved) : 5;
+    return saved !== null ? parseFloat(saved) : 5;
   });
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem('cb_products');
@@ -196,7 +196,7 @@ const App: React.FC = () => {
   const [thermalProxy, setThermalProxy] = useState(() => localStorage.getItem('cb_thermal_proxy') || '');
 
   const [printerType, setPrinterType] = useState<'USB' | 'BLUETOOTH' | 'PROXY'>(() => (localStorage.getItem('cb_printer_type') as any) || 'USB');
-  const [firstTimeMessage, setFirstTimeMessage] = useState(() => localStorage.getItem('cb_first_time_msg') || 'Welcome to ClearBook! Thank you for your first purchase. Here is a 5% coupon for your next visit!');
+  const [firstTimeMessage, setFirstTimeMessage] = useState(() => localStorage.getItem('cb_first_time_msg') || 'Welcome to ClearBook! Thank you for your first purchase. Here is a coupon for your next visit!');
   const [businessName, setBusinessName] = useState(() => localStorage.getItem('cb_business_name') || 'Clear Book POS');
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -786,7 +786,7 @@ const App: React.FC = () => {
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
 
-  const handleFinalizeSale = async (payments: PaymentRecord[], customerName?: string, discount: number = 0, customerPhone?: string) => {
+  const handleFinalizeSale = async (payments: PaymentRecord[], customerName?: string, discount: number = 0, customerPhone?: string, couponRedeemed: number = 0) => {
     if (tokens <= 0) { alert("Terminal Locked: No Tokens Remaining"); return; }
     const transactionId = Math.random().toString(36).substr(2, 5).toUpperCase();
     const now = new Date();
@@ -814,7 +814,9 @@ const App: React.FC = () => {
       total: finalTotal,
       subtotal: finalSubtotal,
       discount: discount,
-      couponApplied: discount > 0,
+      couponApplied: couponRedeemed > 0,
+      couponEarned: couponEarned,
+      couponRate: couponRate,
       mode: systemMode,
       offline: !isOnline,
       customerName: customerName || undefined,
@@ -839,7 +841,7 @@ const App: React.FC = () => {
 
     // Update customer balance if phone is provided
     if (customerPhone) {
-      handleSaveCustomer(customerPhone, customerName || '', transactionId, couponEarned, discount);
+      handleSaveCustomer(customerPhone, customerName || '', transactionId, couponEarned, couponRedeemed);
     }
     
     if (activeUid) {
@@ -878,6 +880,8 @@ const App: React.FC = () => {
           subtotal: transactionData.subtotal,
           discount: transactionData.discount || 0,
           couponApplied: transactionData.couponApplied || false,
+          couponEarned: transactionData.couponEarned || 0,
+          couponRate: transactionData.couponRate || 0,
           mode: transactionData.mode,
           offline: transactionData.offline || false,
           customerName: transactionData.customerName || null,

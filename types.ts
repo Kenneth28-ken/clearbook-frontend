@@ -82,6 +82,8 @@ export interface TransactionRecord {
   subtotal: number;
   discount?: number;
   couponApplied?: boolean;
+  couponEarned?: number;
+  couponRate?: number;
   mode: SystemMode;
   synced?: boolean;
   offline?: boolean;

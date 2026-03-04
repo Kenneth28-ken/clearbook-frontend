@@ -82,6 +82,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
             total: transaction.total,
             subtotal: transaction.subtotal,
             discount: transaction.discount,
+            couponEarned: transaction.couponEarned !== undefined ? transaction.couponEarned : (transaction.total * 0.05),
+            couponRate: transaction.couponRate !== undefined ? transaction.couponRate : 5,
+            couponBalance: phoneNumber ? (customers.find(c => c.phone === phoneNumber)?.couponBalance || 0) : 0,
             currency: currencySymbol,
             customerName: customerName || transaction.customerName || 'Walk-in',
             customerPhone: phoneNumber || transaction.customerPhone || 'N/A',
@@ -241,8 +244,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
                   </div>
                 )}
                 <div className="flex justify-between text-black pt-1 border-t border-black">
-                  <span>Coupon Earned (5%)</span>
-                  <span>+{currencySymbol}{(transaction.total * 0.05).toFixed(2)}</span>
+                  <span>Coupon Earned ({transaction.couponRate !== undefined ? transaction.couponRate : 5}%)</span>
+                  <span>+{currencySymbol}{(transaction.couponEarned !== undefined ? transaction.couponEarned : (transaction.total * 0.05)).toFixed(2)}</span>
                 </div>
                 {phoneNumber && (
                   <div className="flex justify-between text-black font-black">
