@@ -1,10 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
-import { Product, TransactionRecord } from '../types';
+import { Product, TransactionRecord, Expense } from '../types';
 
 interface InventoryModalProps {
   products: Product[];
   history: TransactionRecord[];
+  expenses?: Expense[];
+  onAddExpense?: (expense: Omit<Expense, 'id' | 'timestamp'>) => void;
   onUpdateStock: (productId: string, newStock: number) => void;
   onEditProduct: (product: Product) => void;
   onUpdateProductField: (productId: string, field: keyof Product, value: any) => void;
@@ -13,11 +15,15 @@ interface InventoryModalProps {
   currencySymbol: string;
   isTerminalLocked?: boolean;
   isMaster?: boolean;
+  isManagerOverride?: boolean;
+  onSetManagerOverride?: (val: boolean) => void;
 }
 
 const InventoryModal: React.FC<InventoryModalProps> = ({ 
   products, 
   history,
+  expenses = [],
+  onAddExpense,
   onUpdateStock, 
   onEditProduct, 
   onUpdateProductField,
@@ -25,14 +31,21 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
   onClose, 
   currencySymbol,
   isTerminalLocked = false,
-  isMaster = false
+  isMaster = false,
+  isManagerOverride = false,
+  onSetManagerOverride
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAuthorized, setIsAuthorized] = useState(isMaster);
+  const [isAuthorized, setIsAuthorized] = useState(isMaster || isManagerOverride);
   const [password, setPassword] = useState('');
   const [showPassPrompt, setShowPassPrompt] = useState(false);
   const [viewMode, setViewMode] = useState<'STOCK' | 'ANALYTICS'>('STOCK');
   const [error, setError] = useState('');
+  const [timeRange, setTimeRange] = useState<7 | 30 | 90>(7);
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('');
+  const [expenseDescription, setExpenseDescription] = useState('');
 
   const MASTER_KEY = "961996";
 
@@ -40,6 +53,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
     e.preventDefault();
     if (password.trim().toLowerCase() === MASTER_KEY.toLowerCase()) {
       setIsAuthorized(true);
+      if (onSetManagerOverride) onSetManagerOverride(true);
       setShowPassPrompt(false);
       setError('');
     } else {
@@ -51,33 +65,59 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
   const profitChartData = useMemo(() => {
     if (viewMode !== 'ANALYTICS') return [];
     
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const days = Array.from({ length: timeRange }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - i);
       return d.toISOString().split('T')[0];
     }).reverse();
 
-    const data = last7Days.map(date => {
-      const dailyProfit = history
+    const data = days.map(date => {
+      let dailyRevenue = 0;
+      let dailyCogs = 0;
+      let dailyExpenses = 0;
+
+      history
         .filter(tx => tx.timestamp.toISOString().split('T')[0] === date)
-        .reduce((totalProfit, tx) => {
-          const txProfit = tx.items.reduce((itemSum, item) => {
-            const profitPerItem = item.price - (item.costPrice || 0);
-            return itemSum + (profitPerItem * item.quantity);
-          }, 0);
-          return totalProfit + txProfit;
-        }, 0);
+        .forEach(tx => {
+          dailyRevenue += tx.total;
+          tx.items.forEach(item => {
+            dailyCogs += (item.costPrice || 0) * item.quantity;
+          });
+        });
       
+      expenses
+        .filter(ex => ex.timestamp.toISOString().split('T')[0] === date)
+        .forEach(ex => {
+          dailyExpenses += ex.amount;
+        });
+
       return { 
-        date: new Date(date).toLocaleDateString(undefined, { weekday: 'short' }),
-        profit: dailyProfit
+        date: new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        revenue: dailyRevenue,
+        cogs: dailyCogs,
+        expenses: dailyExpenses,
+        profit: dailyRevenue - dailyCogs - dailyExpenses
       };
     });
 
     return data;
-  }, [history, viewMode]);
+  }, [history, expenses, viewMode, timeRange]);
 
-  const maxProfit = Math.max(...profitChartData.map(d => d.profit), 1);
+  const maxProfit = Math.max(...profitChartData.map(d => Math.max(d.profit, d.revenue, d.expenses)), 1);
+
+  const handleCreateExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expenseAmount || !expenseCategory || !onAddExpense) return;
+    onAddExpense({
+      amount: parseFloat(expenseAmount),
+      category: expenseCategory,
+      description: expenseDescription
+    });
+    setExpenseAmount('');
+    setExpenseCategory('');
+    setExpenseDescription('');
+    setShowAddExpense(false);
+  };
 
   const filtered = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -311,69 +351,123 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
             </div>
           </>
         ) : (
-          <div className="flex-1 bg-gray-50 flex flex-col p-10 animate-in fade-in zoom-in-95">
+          <div className="flex-1 bg-gray-50 flex flex-col p-10 animate-in fade-in zoom-in-95 overflow-y-auto custom-scrollbar">
              <div className="mb-10 flex justify-between items-end">
                 <div>
-                   <h3 className="text-3xl font-black text-gray-900 uppercase tracking-tighter">Profit Performance</h3>
-                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Nett revenue excluding cost price across last 7 days</p>
+                   <h3 className="text-3xl font-black text-gray-900 uppercase tracking-tighter">Income & Expenses</h3>
+                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Track revenue, cost of goods, and custom expenses</p>
                 </div>
-                <div className="text-right">
-                   <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Weekly Nett Profit</div>
-                   <div className="text-4xl font-black text-green-600 tracking-tighter">
+                <div className="flex items-center gap-4">
+                   <div className="flex bg-gray-200 p-1 rounded-xl">
+                     {[7, 30, 90].map(days => (
+                       <button
+                         key={days}
+                         onClick={() => setTimeRange(days as 7 | 30 | 90)}
+                         className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === days ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                       >
+                         {days} Days
+                       </button>
+                     ))}
+                   </div>
+                   <button 
+                     onClick={() => setShowAddExpense(true)}
+                     className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black flex items-center gap-2 hover:bg-blue-700 active:scale-95 transition-all shadow-lg uppercase text-xs tracking-tight"
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+                     Add Expense
+                   </button>
+                </div>
+             </div>
+
+             <div className="flex gap-6 mb-8">
+                <div className="flex-1 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+                   <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Revenue</div>
+                   <div className="text-3xl font-black text-blue-600 tracking-tighter">
+                      {currencySymbol}{profitChartData.reduce((acc, d) => acc + d.revenue, 0).toLocaleString()}
+                   </div>
+                </div>
+                <div className="flex-1 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+                   <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Expenses (COGS + Custom)</div>
+                   <div className="text-3xl font-black text-orange-600 tracking-tighter">
+                      {currencySymbol}{profitChartData.reduce((acc, d) => acc + d.cogs + d.expenses, 0).toLocaleString()}
+                   </div>
+                </div>
+                <div className="flex-1 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+                   <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Net Profit</div>
+                   <div className="text-3xl font-black text-green-600 tracking-tighter">
                       {currencySymbol}{profitChartData.reduce((acc, d) => acc + d.profit, 0).toLocaleString()}
                    </div>
                 </div>
              </div>
 
-             <div className="flex-1 flex items-end justify-between gap-6 px-4">
-                {profitChartData.map((d, idx) => {
-                  const heightPercent = (d.profit / maxProfit) * 100;
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center group">
-                       <div className="mb-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="bg-gray-900 text-white px-3 py-1 rounded-full font-black text-[10px] shadow-xl">
-                            {currencySymbol}{d.profit.toFixed(0)}
-                          </span>
-                       </div>
-                       <div 
-                         className="w-full bg-green-500 rounded-t-2xl shadow-lg transition-all hover:bg-green-400 min-h-[4px]" 
-                         style={{ height: `${Math.max(4, heightPercent)}%` }}
-                       ></div>
-                       <div className="mt-4 text-center">
-                          <div className="text-[10px] font-black text-gray-900 uppercase">{d.date}</div>
-                       </div>
-                    </div>
-                  );
-                })}
+             <div className="flex-1 min-h-[300px] bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 flex flex-col">
+               <div className="flex items-center gap-6 mb-6">
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500"></div><span className="text-[10px] font-black text-gray-500 uppercase">Revenue</span></div>
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-orange-500"></div><span className="text-[10px] font-black text-gray-500 uppercase">Expenses</span></div>
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500"></div><span className="text-[10px] font-black text-gray-500 uppercase">Profit</span></div>
+               </div>
+               
+               <div className="flex-1 flex items-end justify-between gap-2 overflow-x-auto custom-scrollbar pb-4">
+                  {profitChartData.map((d, idx) => {
+                    const revHeight = (d.revenue / maxProfit) * 100;
+                    const expHeight = ((d.cogs + d.expenses) / maxProfit) * 100;
+                    const profHeight = (Math.max(0, d.profit) / maxProfit) * 100;
+                    
+                    return (
+                      <div key={idx} className="flex flex-col items-center group min-w-[40px] flex-1">
+                         <div className="mb-2 opacity-0 group-hover:opacity-100 transition-opacity absolute -mt-16 bg-gray-900 text-white p-2 rounded-xl font-black text-[10px] shadow-xl z-10 whitespace-nowrap pointer-events-none">
+                            <div>Rev: {currencySymbol}{d.revenue.toFixed(0)}</div>
+                            <div>Exp: {currencySymbol}{(d.cogs + d.expenses).toFixed(0)}</div>
+                            <div className="text-green-400">Prof: {currencySymbol}{d.profit.toFixed(0)}</div>
+                         </div>
+                         <div className="flex items-end gap-1 w-full h-full justify-center">
+                           <div className="w-1/3 bg-blue-500 rounded-t-sm transition-all hover:bg-blue-400 min-h-[4px]" style={{ height: `${Math.max(2, revHeight)}%` }}></div>
+                           <div className="w-1/3 bg-orange-500 rounded-t-sm transition-all hover:bg-orange-400 min-h-[4px]" style={{ height: `${Math.max(2, expHeight)}%` }}></div>
+                           <div className="w-1/3 bg-green-500 rounded-t-sm transition-all hover:bg-green-400 min-h-[4px]" style={{ height: `${Math.max(2, profHeight)}%` }}></div>
+                         </div>
+                         <div className="mt-4 text-center">
+                            <div className="text-[8px] font-black text-gray-400 uppercase rotate-45 origin-left whitespace-nowrap">{d.date}</div>
+                         </div>
+                      </div>
+                    );
+                  })}
+               </div>
              </div>
              
-             <div className="mt-12 p-8 bg-white rounded-[2.5rem] border-2 border-gray-100 shadow-sm flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                   <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[1.5rem] flex items-center justify-center">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      </svg>
-                   </div>
-                   <div>
-                      <div className="font-black text-gray-900 text-xl uppercase tracking-tight">Financial Health</div>
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Based on current acquisition cost values</p>
-                   </div>
-                </div>
-                <div className="flex gap-4">
-                   <div className="text-center px-8 border-r">
-                      <div className="text-[9px] font-black text-gray-400 uppercase mb-1">Avg daily profit</div>
-                      <div className="text-2xl font-black text-gray-900">
-                        {currencySymbol}{(profitChartData.reduce((acc, d) => acc + d.profit, 0) / 7).toFixed(0)}
-                      </div>
-                   </div>
-                   <div className="text-center px-8">
-                      <div className="text-[9px] font-black text-gray-400 uppercase mb-1">Most profitable day</div>
-                      <div className="text-2xl font-black text-gray-900">
-                        {profitChartData.sort((a,b) => b.profit - a.profit)[0]?.date || 'N/A'}
-                      </div>
-                   </div>
-                </div>
-             </div>
+             {showAddExpense && (
+               <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
+                 <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95">
+                   <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-6">Record Expense</h3>
+                   <form onSubmit={handleCreateExpense} className="space-y-4">
+                     <div>
+                       <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Amount ({currencySymbol})</label>
+                       <input type="number" step="0.01" required value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black outline-none focus:border-blue-500 transition-colors" placeholder="0.00" />
+                     </div>
+                     <div>
+                       <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Category</label>
+                       <select required value={expenseCategory} onChange={e => setExpenseCategory(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black outline-none focus:border-blue-500 transition-colors uppercase text-sm">
+                         <option value="">Select Category</option>
+                         <option value="Rent">Rent</option>
+                         <option value="Utilities">Utilities</option>
+                         <option value="Payroll">Payroll</option>
+                         <option value="Marketing">Marketing</option>
+                         <option value="Supplies">Supplies</option>
+                         <option value="Maintenance">Maintenance</option>
+                         <option value="Other">Other</option>
+                       </select>
+                     </div>
+                     <div>
+                       <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Description (Optional)</label>
+                       <input type="text" value={expenseDescription} onChange={e => setExpenseDescription(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500 transition-colors" placeholder="Brief description..." />
+                     </div>
+                     <div className="flex gap-4 mt-8">
+                       <button type="button" onClick={() => setShowAddExpense(false)} className="flex-1 py-4 bg-gray-100 text-gray-500 font-black rounded-xl uppercase text-xs tracking-widest hover:bg-gray-200">Cancel</button>
+                       <button type="submit" className="flex-1 py-4 bg-blue-600 text-white font-black rounded-xl shadow-xl uppercase text-xs tracking-widest hover:bg-blue-700">Save Expense</button>
+                     </div>
+                   </form>
+                 </div>
+               </div>
+             )}
           </div>
         )}
 

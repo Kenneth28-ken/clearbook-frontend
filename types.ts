@@ -34,6 +34,8 @@ export interface Product {
   color?: string;
   modifiers?: Modifier[];
   stock: number;
+  barcode?: string;
+  createdAt?: number;
 }
 
 export interface CartItem {
@@ -102,6 +104,14 @@ export interface Customer {
   lastVisit: Date;
   visitCount: number;
   couponBalance: number;
+}
+
+export interface Expense {
+  id: string;
+  amount: number;
+  category: string;
+  description: string;
+  timestamp: Date;
 }
 
 export enum AuditType {

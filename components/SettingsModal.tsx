@@ -23,6 +23,10 @@ interface SettingsModalProps {
   onSetFirstTimeMessage: (text: string) => void;
   businessName: string;
   onSetBusinessName: (name: string) => void;
+  categories: string[];
+  onUpdateCategories: (categories: string[]) => void;
+  couponRate: number;
+  onUpdateCouponRate: (rate: number) => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -46,7 +50,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   firstTimeMessage,
   onSetFirstTimeMessage,
   businessName,
-  onSetBusinessName
+  onSetBusinessName,
+  categories,
+  onUpdateCategories,
+  couponRate,
+  onUpdateCouponRate
 }) => {
   const [newPass, setNewPass] = useState('');
   const [isTesting, setIsTesting] = useState(false);
@@ -199,6 +207,42 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                value={businessName}
                onChange={(e) => onSetBusinessName(e.target.value)}
                placeholder="ENTER BUSINESS NAME..."
+             />
+          </div>
+
+          <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
+             <div className="flex flex-col gap-1 mb-3">
+               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Categories</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase">Comma separated list of categories. First category must be 'All'.</p>
+             </div>
+             <input 
+               type="text"
+               className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500 transition-colors text-gray-900"
+               value={categories.join(', ')}
+               onChange={(e) => {
+                 const newCats = e.target.value.split(',').map(c => c.trim()).filter(c => c);
+                 if (newCats[0] !== 'All') {
+                   newCats.unshift('All');
+                 }
+                 onUpdateCategories(newCats);
+               }}
+               placeholder="All, Drinks, Food..."
+             />
+          </div>
+
+          <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
+             <div className="flex items-center gap-3 mb-3">
+               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Coupon Rate (%)</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase">Percentage of total amount earned as coupon.</p>
+             </div>
+             <input 
+               type="number"
+               min="0"
+               max="100"
+               className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500 transition-colors text-gray-900"
+               value={couponRate}
+               onChange={(e) => onUpdateCouponRate(parseFloat(e.target.value) || 0)}
+               placeholder="5"
              />
           </div>
 

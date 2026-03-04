@@ -40,6 +40,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
   businessName = 'Clear Book POS'
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
+  const [showPrintView, setShowPrintView] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showWhatsAppInput, setShowWhatsAppInput] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState(transaction.customerPhone || '');
@@ -67,6 +68,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   const handlePrint = async () => {
     setIsPrinting(true);
+    setShowPrintView(true);
     
     if (printerType === 'PROXY' && thermalProxy && thermalProxy.trim() !== '') {
         try {
@@ -188,19 +190,23 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[1100] p-4 sm:p-6 backdrop-blur-xl overflow-y-auto">
       <div className="bg-white rounded-[3rem] w-full max-w-xl overflow-hidden flex flex-col shadow-2xl relative max-h-[95vh]">
-        <button onClick={onClose} className="absolute top-6 right-6 z-[1110] p-2 bg-black/10 rounded-full text-white/80 hover:text-white transition-all">
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
+        {!showPrintView && (
+          <button onClick={onClose} className="absolute top-6 right-6 z-[1110] p-2 bg-black/10 rounded-full text-white/80 hover:text-white transition-all">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        )}
 
-        <div className="bg-green-600 p-8 text-white text-center">
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Sale Finalized</h2>
-          <div className="bg-black/20 rounded-full px-4 py-1 inline-block mt-2 border border-white/10">
-            <span className="text-[10px] font-black uppercase tracking-widest text-green-100">TXID: #{transaction.id}</span>
+        {!showPrintView && (
+          <div className="bg-green-600 p-8 text-white text-center">
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Sale Finalized</h2>
+            <div className="bg-black/20 rounded-full px-4 py-1 inline-block mt-2 border border-white/10">
+              <span className="text-[10px] font-black uppercase tracking-widest text-green-100">TXID: #{transaction.id}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50 flex flex-col items-center">
-          <div className="bg-white w-full p-8 shadow-2xl border-t-[12px] border-black font-mono text-xs text-black rounded-b-2xl flex flex-col">
+          <div className="bg-white w-full p-8 shadow-2xl border-t-[12px] border-black font-mono text-xs text-black rounded-b-2xl flex flex-col print:shadow-none print:border-none print:rounded-none">
              <div className="text-center mb-6">
                 <div className="font-black text-2xl tracking-tighter text-black uppercase mb-2">{businessName}</div>
                 <div className="uppercase font-black text-base text-black mt-2 border-y-2 border-black py-3 leading-tight">
@@ -257,13 +263,21 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
           </div>
         </div>
 
-        <div className="p-8 bg-white border-t flex flex-col gap-4">
-           <div className="grid grid-cols-2 gap-4">
-            <button onClick={handlePrint} disabled={isPrinting} className="py-5 rounded-2xl font-black text-[10px] bg-gray-900 text-white hover:bg-black transition-all uppercase">Thermal Print</button>
-             <button onClick={() => setShowWhatsAppInput(true)} className="py-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] hover:bg-blue-700 transition-all uppercase">Send Message</button>
-           </div>
-           <button onClick={onClose} className="w-full py-6 bg-blue-600 text-white rounded-[2rem] font-black text-2xl hover:bg-blue-500 transition-all uppercase tracking-tight shadow-2xl">Ready for Next Sale</button>
-        </div>
+        {showPrintView ? (
+          <div className="p-8 bg-white border-t flex flex-col gap-4 print:hidden">
+            <button onClick={() => setShowPrintView(false)} className="w-full py-6 bg-gray-200 text-gray-800 rounded-[2rem] font-black text-2xl hover:bg-gray-300 transition-all uppercase tracking-tight shadow-lg">
+              Go Back
+            </button>
+          </div>
+        ) : (
+          <div className="p-8 bg-white border-t flex flex-col gap-4 print:hidden">
+             <div className="grid grid-cols-2 gap-4">
+              <button onClick={handlePrint} disabled={isPrinting} className="py-5 rounded-2xl font-black text-[10px] bg-gray-900 text-white hover:bg-black transition-all uppercase">Thermal Print</button>
+               <button onClick={() => setShowWhatsAppInput(true)} className="py-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] hover:bg-blue-700 transition-all uppercase">Send Message</button>
+             </div>
+             <button onClick={onClose} className="w-full py-6 bg-blue-600 text-white rounded-[2rem] font-black text-2xl hover:bg-blue-500 transition-all uppercase tracking-tight shadow-2xl">Ready for Next Sale</button>
+          </div>
+        )}
       </div>
 
       {showWhatsAppInput && (

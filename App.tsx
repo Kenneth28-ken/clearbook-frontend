@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { auth, db, firebase } from './firebase';
 import PrismaticAuditModal from './components/PrismaticAuditModal';
-import { AppView, CartItem, Product, Staff, ItemType, Modifier, PaymentRecord, TransactionRecord, Attendant, MobileOrder, SystemMode, Customer, AuditCheckpoint, AuditType } from './types';
+import { AppView, CartItem, Product, Staff, ItemType, Modifier, PaymentRecord, TransactionRecord, Attendant, MobileOrder, SystemMode, Customer, AuditCheckpoint, AuditType, Expense } from './types';
 import { MOCK_PRODUCTS as INITIAL_PRODUCTS, TAX_RATE, CATEGORIES, SERVER_LIST, STAFF_LIST } from './constants';
 
 // Components
@@ -100,6 +100,14 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : SERVER_LIST;
   });
   
+  const [categories, setCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem('cb_categories');
+    return saved ? JSON.parse(saved) : CATEGORIES;
+  });
+  const [couponRate, setCouponRate] = useState<number>(() => {
+    const saved = localStorage.getItem('cb_couponRate');
+    return saved ? parseFloat(saved) : 5;
+  });
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem('cb_products');
     return saved ? JSON.parse(saved) : [];
@@ -117,6 +125,13 @@ const App: React.FC = () => {
     if (!saved) return [];
     const parsed = JSON.parse(saved);
     return parsed.map((c: any) => ({ ...c, lastVisit: new Date(c.lastVisit) }));
+  });
+
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    const saved = localStorage.getItem('cb_expenses');
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return parsed.map((e: any) => ({ ...e, timestamp: new Date(e.timestamp) }));
   });
 
   const [tokens, setTokens] = useState<number>(() => {
@@ -160,6 +175,7 @@ const App: React.FC = () => {
   const [impersonatedUid, setImpersonatedUid] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<'ACTIVE' | 'RESTRICTED' | 'SHUTDOWN'>('ACTIVE');
   const [editingMobileOrder, setEditingMobileOrder] = useState<MobileOrder | null>(null);
+  const [isManagerOverride, setIsManagerOverride] = useState(false);
   
   const knownOrderIds = useRef<Set<string>>(new Set());
   const [newOrderNotification, setNewOrderNotification] = useState<string | null>(null);
@@ -287,6 +303,8 @@ const App: React.FC = () => {
     try {
       localStorage.setItem('cb_staff', safeJsonStringify(staffList));
       localStorage.setItem('cb_attendants', safeJsonStringify(attendantsList));
+      localStorage.setItem('cb_categories', safeJsonStringify(categories));
+      localStorage.setItem('cb_couponRate', couponRate.toString());
       localStorage.setItem('cb_products', safeJsonStringify(products));
       localStorage.setItem('cb_history', safeJsonStringify(history));
       localStorage.setItem('cb_customers', safeJsonStringify(customers));
@@ -303,10 +321,11 @@ const App: React.FC = () => {
       localStorage.setItem('cb_printer_type', printerType);
       localStorage.setItem('cb_first_time_msg', firstTimeMessage);
       localStorage.setItem('cb_business_name', businessName);
+      localStorage.setItem('cb_expenses', safeJsonStringify(expenses));
     } catch (e) {
       console.error("Failed to save state to localStorage:", e);
     }
-  }, [staffList, attendantsList, products, history, customers, tokens, whatsappTokens, cart, activeTableLabel, currencySymbol, whatsappApi, whatsappMethod, whatsappCompatibilityMode, thermalProxy, mobileOrders, printerType, firstTimeMessage, businessName]);
+  }, [staffList, attendantsList, products, history, customers, tokens, whatsappTokens, cart, activeTableLabel, currencySymbol, whatsappApi, whatsappMethod, whatsappCompatibilityMode, thermalProxy, mobileOrders, printerType, firstTimeMessage, businessName, expenses]);
 
   useEffect(() => {
     if (!activeUid) return;
@@ -315,6 +334,8 @@ const App: React.FC = () => {
         if (doc.exists) {
             setTokens(doc.data()?.tokens || 0);
             setWhatsappTokens(doc.data()?.whatsappTokens || 0);
+            if (doc.data()?.couponRate !== undefined) setCouponRate(doc.data()?.couponRate);
+            if (doc.data()?.categories) setCategories(doc.data()?.categories);
         }
       });
     const unsubStaff = db.collection("users").doc(activeUid).collection("staff")
@@ -327,7 +348,11 @@ const App: React.FC = () => {
       });
     const unsubProducts = db.collection("users").doc(activeUid).collection("products")
       .onSnapshot((snap) => {
-        if (!snap.empty) setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
+        if (!snap.empty) {
+          const loadedProducts = snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+          loadedProducts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          setProducts(loadedProducts);
+        }
       });
     const unsubHistory = db.collection("users").doc(activeUid).collection("history")
       .orderBy("timestamp", "desc")
@@ -338,6 +363,19 @@ const App: React.FC = () => {
             id: d.id,
             timestamp: parseDate(d.data()?.timestamp)
           } as TransactionRecord)));
+        }
+      });
+    const unsubExpenses = db.collection("users").doc(activeUid).collection("expenses")
+      .orderBy("timestamp", "desc")
+      .onSnapshot((snap) => {
+        if (!snap.empty) {
+          setExpenses(snap.docs.map(d => ({
+            ...d.data(),
+            id: d.id,
+            timestamp: parseDate(d.data()?.timestamp)
+          } as Expense)));
+        } else {
+          setExpenses([]);
         }
       });
     const unsubCustomers = db.collection("users").doc(activeUid).collection("customers")
@@ -371,7 +409,7 @@ const App: React.FC = () => {
           knownOrderIds.current.clear();
         }
       });
-    return () => { unsubConfig(); unsubStaff(); unsubAttendants(); unsubProducts(); unsubHistory(); unsubCustomers(); unsubMobile(); };
+    return () => { unsubConfig(); unsubStaff(); unsubAttendants(); unsubProducts(); unsubHistory(); unsubExpenses(); unsubCustomers(); unsubMobile(); };
   }, [activeUid]);
 
   useEffect(() => {
@@ -560,6 +598,26 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddExpense = async (expense: Omit<Expense, 'id' | 'timestamp'>) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const newExpense: Expense = {
+      ...expense,
+      id,
+      timestamp: new Date()
+    };
+    setExpenses(prev => [newExpense, ...prev]);
+    if (activeUid) {
+      try {
+        await db.collection("users").doc(activeUid).collection("expenses").doc(id).set({
+          ...newExpense,
+          timestamp: firebase.firestore.Timestamp.fromDate(newExpense.timestamp)
+        });
+      } catch (e) {
+        console.error("Failed to add expense", e);
+      }
+    }
+  };
+
   const handleUpdateProduct = async (product: Product) => {
     setProducts(prev => prev.map(p => p.id === product.id ? product : p));
     if (activeUid) {
@@ -583,7 +641,7 @@ const App: React.FC = () => {
   };
 
   const handleAddProduct = async (product: Product) => {
-    setProducts(prev => [...prev, product]);
+    setProducts(prev => [product, ...prev]);
     if (activeUid) {
       try {
         await db.collection("users").doc(activeUid).collection("products").doc(product.id).set(sanitize(product));
@@ -616,6 +674,45 @@ const App: React.FC = () => {
     };
     setCart(prev => [...prev, newItem]);
   };
+
+  // Barcode Scanner Listener
+  useEffect(() => {
+    let barcodeBuffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input field
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
+        return;
+      }
+
+      const currentTime = Date.now();
+      // If more than 50ms between keystrokes, reset buffer (scanners type very fast)
+      if (currentTime - lastKeyTime > 50) {
+        barcodeBuffer = '';
+      }
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        if (barcodeBuffer.length > 0) {
+          // Process barcode
+          const scannedProduct = products.find(p => p.barcode === barcodeBuffer);
+          if (scannedProduct) {
+            addToCart(scannedProduct);
+            playAlertSound();
+          }
+          barcodeBuffer = '';
+        }
+      } else if (e.key.length === 1) {
+        // Append printable characters
+        barcodeBuffer += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [products]);
 
   const updateCartQuantity = (cartId: string, delta: number) => {
     setCart(prev => prev.map(item => {
@@ -697,8 +794,8 @@ const App: React.FC = () => {
     const finalSubtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
     const finalTotal = finalSubtotal - discount;
 
-    // Calculate coupon earned (5% of final total)
-    const couponEarned = finalTotal * 0.05;
+    // Calculate coupon earned based on dynamic rate
+    const couponEarned = finalTotal * (couponRate / 100);
 
     const itemsWithValidatedCost = cart.map(item => ({
       ...item,
@@ -890,6 +987,20 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateCategories = async (newCategories: string[]) => {
+    setCategories(newCategories);
+    if (activeUid) {
+      await db.collection("users").doc(activeUid).collection("config").doc("terminal").set({ categories: newCategories }, { merge: true });
+    }
+  };
+
+  const handleUpdateCouponRate = async (rate: number) => {
+    setCouponRate(rate);
+    if (activeUid) {
+      await db.collection("users").doc(activeUid).collection("config").doc("terminal").set({ couponRate: rate }, { merge: true });
+    }
+  };
+
   const handleLogout = () => { auth.signOut(); setCurrentStaff(null); setView(AppView.LOGIN); };
 
   if (authLoading) return <div className="h-screen bg-gray-900 flex items-center justify-center"><div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -993,7 +1104,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4">
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-6 py-2.5 rounded-full font-black text-xs uppercase tracking-widest whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-400 hover:bg-gray-50'}`}>{cat}</button>
             ))}
           </div>
@@ -1070,10 +1181,14 @@ const App: React.FC = () => {
         onSetFirstTimeMessage={setFirstTimeMessage}
         businessName={businessName}
         onSetBusinessName={handleUpdateBusinessName}
+        categories={categories}
+        onUpdateCategories={handleUpdateCategories}
+        couponRate={couponRate}
+        onUpdateCouponRate={handleUpdateCouponRate}
       />}
-      {showInventory && <InventoryModal products={products} history={history} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onClose={() => setShowInventory(false)} isMaster={isMasterMode} />}
-      {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} />}
-      {editingProduct && <EditProductModal product={editingProduct} onUpdate={(p) => { handleUpdateProduct(p); setEditingProduct(null); }} onClose={() => setEditingProduct(null)} currencySymbol={currencySymbol} />}
+      {showInventory && <InventoryModal products={products} history={history} expenses={expenses} onAddExpense={handleAddExpense} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onClose={() => setShowInventory(false)} isMaster={isMasterMode} isManagerOverride={isManagerOverride} onSetManagerOverride={setIsManagerOverride} />}
+      {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} categories={categories} />}
+      {editingProduct && <EditProductModal product={editingProduct} onUpdate={(p) => { handleUpdateProduct(p); setEditingProduct(null); }} onClose={() => setEditingProduct(null)} currencySymbol={currencySymbol} categories={categories} />}
       {showModifier && <ModifierModal product={showModifier} currencySymbol={currencySymbol} onConfirm={(mods) => { addToCart(showModifier, mods); setShowModifier(null); }} onClose={() => setShowModifier(null)} />}
       {showWeight && <WeightModal product={showWeight} currencySymbol={currencySymbol} onConfirm={(w) => { addToCart(showWeight, [], w); setShowWeight(null); }} onClose={() => setShowWeight(null)} />}
       {showReceipt && (

@@ -1,22 +1,42 @@
 
 import React, { useState } from 'react';
-import { Product, ItemType } from '../types';
-import { CATEGORIES } from '../constants';
+import { Product, ItemType, Modifier } from '../types';
 
 interface EditProductModalProps {
   product: Product;
   onUpdate: (product: Product) => void;
   onClose: () => void;
   currencySymbol: string;
+  categories: string[];
 }
 
-const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, onClose, currencySymbol }) => {
+const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, onClose, currencySymbol, categories }) => {
   const [name, setName] = useState(product.name);
   const [price, setPrice] = useState(product.price.toString());
   const [costPrice, setCostPrice] = useState((product.costPrice || 0).toString());
   const [stock, setStock] = useState(product.stock.toString());
+  const [barcode, setBarcode] = useState(product.barcode || '');
   const [category, setCategory] = useState(product.category);
   const [type, setType] = useState<ItemType>(product.type);
+  const [modifiers, setModifiers] = useState<Modifier[]>(product.modifiers || []);
+  const [newModifierName, setNewModifierName] = useState('');
+  const [newModifierPrice, setNewModifierPrice] = useState('');
+
+  const handleAddModifier = () => {
+    if (!newModifierName) return;
+    const newMod: Modifier = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newModifierName,
+      price: parseFloat(newModifierPrice) || 0,
+    };
+    setModifiers([...modifiers, newMod]);
+    setNewModifierName('');
+    setNewModifierPrice('');
+  };
+
+  const handleRemoveModifier = (id: string) => {
+    setModifiers(modifiers.filter(m => m.id !== id));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,17 +48,19 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, 
       price: parseFloat(price),
       costPrice: parseFloat(costPrice) || 0,
       stock: parseInt(stock) || 0,
+      barcode,
       category,
       type,
+      modifiers: modifiers.length > 0 ? modifiers : undefined,
     };
 
     onUpdate(updatedProduct);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[250] p-6">
-      <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="p-6 bg-yellow-500 text-gray-900 flex justify-between items-center">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[400] p-6 overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 my-8">
+        <div className="p-6 bg-yellow-500 text-gray-900 flex justify-between items-center sticky top-0 z-10">
           <div className="flex items-center gap-3">
              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -110,26 +132,88 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ product, onUpdate, 
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                 >
-                  {CATEGORIES.filter(c => c !== 'All').map(cat => (
+                  {categories.filter(c => c !== 'All').map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div>
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Stock Level</label>
-              <input 
-                type="number" 
-                required
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 text-gray-900"
-                value={stock}
-                onChange={(e) => setStock(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Stock Level</label>
+                <input 
+                  type="number" 
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 text-gray-900"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Barcode (Optional)</label>
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 text-gray-900"
+                  placeholder="Scan or enter barcode"
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Variations / Modifiers Section */}
+            <div className="pt-4 border-t border-gray-100">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Variations (Sizes, Colors, etc.)</label>
+              
+              {modifiers.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  {modifiers.map(mod => (
+                    <div key={mod.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-200">
+                      <div>
+                        <span className="font-bold text-gray-900">{mod.name}</span>
+                        {mod.price > 0 && <span className="ml-2 text-sm text-blue-600 font-bold">(+{currencySymbol}{mod.price.toFixed(2)})</span>}
+                      </div>
+                      <button type="button" onClick={() => handleRemoveModifier(mod.id)} className="text-red-500 hover:text-red-700 p-1">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="e.g. Size: XL"
+                  className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 text-gray-900"
+                  value={newModifierName}
+                  onChange={(e) => setNewModifierName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddModifier(); } }}
+                />
+                <input 
+                  type="number" 
+                  step="0.01"
+                  placeholder={`+${currencySymbol}0.00`}
+                  className="w-24 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500 text-gray-900"
+                  value={newModifierPrice}
+                  onChange={(e) => setNewModifierPrice(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddModifier(); } }}
+                />
+                <button 
+                  type="button"
+                  onClick={handleAddModifier}
+                  disabled={!newModifierName}
+                  className="px-4 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Add variations like sizes or colors. You can optionally add an extra cost for the variation.</p>
             </div>
           </div>
 
-          <div className="pt-4 flex gap-4">
+          <div className="pt-4 flex gap-4 sticky bottom-0 bg-white pb-2">
             <button 
               type="button"
               onClick={onClose}
