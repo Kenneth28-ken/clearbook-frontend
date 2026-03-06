@@ -47,7 +47,6 @@ export interface CartItem {
   quantity: number;
   type: ItemType;
   selectedModifiers: Modifier[];
-  taxRate: number;
 }
 
 export interface Staff {

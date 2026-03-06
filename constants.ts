@@ -1,8 +1,6 @@
 
 import { Product, ItemType, Staff, Attendant } from './types';
 
-export const TAX_RATE = 0.10; // 10% standard tax
-
 export const STAFF_LIST: Staff[] = [
   { id: 'S01', name: 'Blessing Sales', role: 'Cashier', pin: '0000', avatarColor: 'bg-pink-500' },
   { id: 'S02', name: 'Chisom Retail', role: 'Cashier', pin: '2345', avatarColor: 'bg-emerald-500' },

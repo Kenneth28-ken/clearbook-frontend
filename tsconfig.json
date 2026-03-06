@@ -16,5 +16,5 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "App.tsx", "index.tsx", "constants.ts", "firebase.ts", "types.ts", "components"]
+  "include": ["src", "App.tsx", "index.tsx", "constants.ts", "firebase.ts", "types.ts", "components", "vite-env.d.ts"]
 }

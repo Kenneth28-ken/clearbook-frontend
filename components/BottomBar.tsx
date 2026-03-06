@@ -2,7 +2,6 @@ import React from 'react';
 
 interface BottomBarProps {
   subtotal: number;
-  tax: number;
   total: number;
   onPay: () => void;
   onShowHistory: () => void;
@@ -15,11 +14,12 @@ interface BottomBarProps {
   isMaster?: boolean;
   canSeeProfit?: boolean;
   onOpenProfitHistory?: () => void;
+  onOpenExpenses?: () => void;
 }
 
 const BottomBar: React.FC<BottomBarProps> = ({ 
-  subtotal, tax, total, onPay, onShowHistory, disabled, currencySymbol, tokens,
-  todayProfit, todayCost, todayRevenue, isMaster = false, canSeeProfit = false, onOpenProfitHistory
+  subtotal, total, onPay, onShowHistory, disabled, currencySymbol, tokens,
+  todayProfit, todayCost, todayRevenue, isMaster = false, canSeeProfit = false, onOpenProfitHistory, onOpenExpenses
 }) => {
   const isOutOfTokens = tokens <= 0;
 
@@ -32,10 +32,6 @@ const BottomBar: React.FC<BottomBarProps> = ({
             <span>Subtotal</span>
             <span className="text-gray-200">{currencySymbol}{subtotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between w-40">
-            <span>Tax (10%)</span>
-            <span className="text-gray-200">{currencySymbol}{tax.toFixed(2)}</span>
-          </div>
         </div>
         <div className="flex flex-col">
           <span className="text-[10px] uppercase font-black text-blue-400 tracking-[0.2em] mb-1">TOTAL TO PAY</span>
@@ -44,7 +40,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
       </div>
 
       {/* Right section: Actions */}
-      <div className="flex-1 grid grid-cols-4 gap-4">
+      <div className="flex-1 grid grid-cols-5 gap-4">
         <button 
           onClick={onShowHistory}
           className="flex flex-col items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-xl font-bold transition-all active:scale-95"
@@ -62,7 +58,17 @@ const BottomBar: React.FC<BottomBarProps> = ({
           <svg className="w-6 h-6 mb-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2z" />
           </svg>
-          PROFIT HISTORY
+          PROFIT
+        </button>
+
+        <button 
+          onClick={onOpenExpenses}
+          className="flex flex-col items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-xl font-bold transition-all active:scale-95"
+        >
+          <svg className="w-6 h-6 mb-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          EXPENSES
         </button>
         
         {/* Token Alert Indicator */}

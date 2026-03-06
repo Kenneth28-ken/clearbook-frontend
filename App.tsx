@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { auth, db, firebase } from './firebase';
 import PrismaticAuditModal from './components/PrismaticAuditModal';
 import { AppView, CartItem, Product, Staff, ItemType, Modifier, PaymentRecord, TransactionRecord, Attendant, MobileOrder, SystemMode, Customer, AuditCheckpoint, AuditType, Expense } from './types';
-import { MOCK_PRODUCTS as INITIAL_PRODUCTS, TAX_RATE, CATEGORIES, SERVER_LIST, STAFF_LIST } from './constants';
+import { MOCK_PRODUCTS as INITIAL_PRODUCTS, CATEGORIES, SERVER_LIST, STAFF_LIST } from './constants';
 
 // Components
 import LoginScreen from './components/LoginScreen';
@@ -31,6 +31,7 @@ import StaffManagementModal from './components/StaffManagementModal';
 import EditMobileOrderModal from './components/EditMobileOrderModal';
 import MasterDashboardModal from './components/MasterDashboardModal';
 import ProfitHistoryModal from './components/ProfitHistoryModal';
+import ExpensesModal from './components/ExpensesModal';
 
 const MASTER_EMAIL = "perfectmaney200@gmail.com";
 const STOCK_THRESHOLD = 10;
@@ -171,6 +172,7 @@ const App: React.FC = () => {
   const [showStaffManagement, setShowStaffManagement] = useState(false);
   const [showMasterDashboard, setShowMasterDashboard] = useState(false);
   const [showProfitHistory, setShowProfitHistory] = useState(false);
+  const [showExpensesModal, setShowExpensesModal] = useState(false);
   const [showPrismaticAudit, setShowPrismaticAudit] = useState(false);
   const [impersonatedUid, setImpersonatedUid] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<'ACTIVE' | 'RESTRICTED' | 'SHUTDOWN'>('ACTIVE');
@@ -555,6 +557,46 @@ const App: React.FC = () => {
     alert("System database restored successfully from file.");
   };
 
+  const handleImportProducts = async (newProducts: any[]) => {
+    // Merge with existing products
+    const updatedProducts = [...products];
+    let addedCount = 0;
+    let updatedCount = 0;
+
+    newProducts.forEach(np => {
+      const existingIndex = updatedProducts.findIndex(p => 
+        (p.barcode && np.barcode && p.barcode === np.barcode) || 
+        (p.name.toLowerCase() === np.name.toLowerCase())
+      );
+
+      if (existingIndex >= 0) {
+        // Update existing
+        updatedProducts[existingIndex] = { ...updatedProducts[existingIndex], ...np, id: updatedProducts[existingIndex].id };
+        updatedCount++;
+      } else {
+        // Add new
+        updatedProducts.push(np);
+        addedCount++;
+      }
+    });
+
+    setProducts(updatedProducts);
+    if (activeUid) {
+      // Batch update to Firestore (this might be slow for large imports, but okay for now)
+      // Ideally use a batch write, but we'll just loop for simplicity in this context
+      // or just warn user it might take a moment.
+      newProducts.forEach(np => {
+         const existing = products.find(p => (p.barcode && np.barcode && p.barcode === np.barcode) || (p.name.toLowerCase() === np.name.toLowerCase()));
+         if (existing) {
+            db.collection("users").doc(activeUid).collection("products").doc(existing.id).set(sanitize({ ...existing, ...np }), { merge: true });
+         } else {
+            db.collection("users").doc(activeUid).collection("products").doc(np.id).set(sanitize(np));
+         }
+      });
+    }
+    alert(`Import Complete!\nAdded: ${addedCount}\nUpdated: ${updatedCount}`);
+  };
+
   const handleUpdateStaff = async (staffId: string, updates: Partial<Staff>) => {
     const existing = staffList.find(s => s.id === staffId);
     const fullUpdate = sanitize({ ...existing, ...updates });
@@ -670,7 +712,6 @@ const App: React.FC = () => {
       quantity: qty,
       type: product.type,
       selectedModifiers: modifiers,
-      taxRate: TAX_RATE,
     };
     setCart(prev => [...prev, newItem]);
   };
@@ -783,8 +824,7 @@ const App: React.FC = () => {
   };
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const tax = subtotal * TAX_RATE;
-  const total = subtotal + tax;
+  const total = subtotal;
 
   const handleFinalizeSale = async (payments: PaymentRecord[], customerName?: string, discount: number = 0, customerPhone?: string, couponRedeemed: number = 0) => {
     if (tokens <= 0) { alert("Terminal Locked: No Tokens Remaining"); return; }
@@ -873,7 +913,6 @@ const App: React.FC = () => {
             quantity: item.quantity,
             type: item.type,
             selectedModifiers: item.selectedModifiers.map(m => ({ id: m.id, name: m.name, price: m.price })),
-            taxRate: item.taxRate,
           })),
           payments: transactionData.payments.map(p => ({ method: p.method, amount: p.amount })),
           total: transactionData.total,
@@ -1147,7 +1186,6 @@ const App: React.FC = () => {
 
       <BottomBar 
         subtotal={subtotal} 
-        tax={tax} 
         total={total} 
         currencySymbol={currencySymbol} 
         onPay={() => setShowCheckout(true)} 
@@ -1160,6 +1198,7 @@ const App: React.FC = () => {
         isMaster={isMasterMode}
         canSeeProfit={currentStaff?.role === 'Manager'}
         onOpenProfitHistory={() => setShowProfitHistory(true)}
+        onOpenExpenses={() => setShowExpensesModal(true)}
       />
 
       {showCheckout && <CheckoutModal total={total} currencySymbol={currencySymbol} customers={customers} onClose={() => setShowCheckout(false)} onComplete={handleFinalizeSale} />}
@@ -1179,6 +1218,7 @@ const App: React.FC = () => {
         onSimulateOrder={() => {}} 
         onClose={() => setShowSettings(false)} 
         onRestoreData={handleRestoreData} 
+        onImportProducts={handleImportProducts}
         printerType={printerType}
         onSetPrinterType={setPrinterType}
         firstTimeMessage={firstTimeMessage}
@@ -1247,6 +1287,13 @@ const App: React.FC = () => {
           products={products}
           onClose={() => setShowProfitHistory(false)} 
           currencySymbol={currencySymbol} 
+        />
+      )}
+      {showExpensesModal && (
+        <ExpensesModal
+          expenses={expenses}
+          onClose={() => setShowExpensesModal(false)}
+          currencySymbol={currencySymbol}
         />
       )}
     </div>

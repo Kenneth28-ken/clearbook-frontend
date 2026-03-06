@@ -47,6 +47,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ setSystemMode, onPasswordReco
         setError("User already exists. Please sign in");
       } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         setError("Email or password is incorrect");
+      } else if (err.code === 'auth/network-request-failed') {
+        setError("Network error. This may be due to a blocked API key, ad blocker, or missing internet connection.");
       } else {
         setError(err.message || "An authentication error occurred");
       }

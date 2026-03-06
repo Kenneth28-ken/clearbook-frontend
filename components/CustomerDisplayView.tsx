@@ -33,8 +33,7 @@ const CustomerDisplayView: React.FC = () => {
   }, []);
 
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const tax = subtotal * 0.10; // Assuming 10% tax rate
-  const total = subtotal + tax;
+  const total = subtotal;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex font-sans">
@@ -73,10 +72,6 @@ const CustomerDisplayView: React.FC = () => {
                 <div className="flex justify-between font-medium text-gray-300">
                     <span>Subtotal</span>
                     <span>{currencySymbol}{subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-medium text-gray-300">
-                    <span>Tax (10%)</span>
-                    <span>{currencySymbol}{tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-black text-4xl text-white mt-4 border-t border-gray-700 pt-4">
                     <span>Total</span>

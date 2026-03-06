@@ -1,5 +1,6 @@
 
 import React, { useState, useRef } from 'react';
+import MigrationModal from './MigrationModal';
 
 interface SettingsModalProps {
   currencySymbol: string;
@@ -17,6 +18,7 @@ interface SettingsModalProps {
   onSetThermalProxy: (val: string) => void;
   onChangePassword?: (newPass: string) => void;
   onRestoreData?: (data: any) => void;
+  onImportProducts?: (products: any[]) => void;
   printerType: 'USB' | 'BLUETOOTH' | 'PROXY';
   onSetPrinterType: (type: 'USB' | 'BLUETOOTH' | 'PROXY') => void;
   firstTimeMessage: string;
@@ -45,6 +47,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onSetThermalProxy,
   onChangePassword,
   onRestoreData,
+  onImportProducts,
   printerType,
   onSetPrinterType,
   firstTimeMessage,
@@ -58,6 +61,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [newPass, setNewPass] = useState('');
   const [isTesting, setIsTesting] = useState(false);
+  const [showMigration, setShowMigration] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const currencies = [
@@ -156,6 +160,69 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleCsvImportClick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        const lines = text.split('\n');
+        if (lines.length < 2) return;
+
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+        const newProducts: any[] = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i].trim()) continue;
+          // Handle quoted values (simple regex)
+          const values = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || lines[i].split(',').map(v => v.trim());
+          
+          if (values.length < 2) continue;
+
+          const product: any = {
+            id: Math.random().toString(36).substr(2, 9),
+            createdAt: Date.now(),
+            stock: 0,
+            costPrice: 0,
+            category: 'Uncategorized',
+            barcode: ''
+          };
+
+          headers.forEach((header, index) => {
+            if (index >= values.length) return;
+            const value = values[index];
+            
+            if (header.includes('name') || header.includes('item') || header.includes('product')) product.name = value;
+            else if (header.includes('price') || header.includes('sell')) product.price = parseFloat(value) || 0;
+            else if (header.includes('category') || header.includes('group')) product.category = value || 'Uncategorized';
+            else if (header.includes('barcode') || header.includes('sku') || header.includes('upc')) product.barcode = value;
+            else if (header.includes('stock') || header.includes('qty') || header.includes('quantity')) product.stock = parseInt(value) || 0;
+            else if (header.includes('cost') || header.includes('buy')) product.costPrice = parseFloat(value) || 0;
+          });
+
+          if (product.name && product.price >= 0) {
+            newProducts.push(product);
+          }
+        }
+
+        if (newProducts.length > 0) {
+          if (confirm(`Found ${newProducts.length} valid products. Import them now?`)) {
+            onImportProducts?.(newProducts);
+          }
+        } else {
+          alert("No valid products found. Ensure CSV has headers: Name, Price, Category, Barcode, Stock");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -266,7 +333,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-[10px] font-black uppercase hover:bg-red-100 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                  Import
+                  Restore
+                </button>
+                <button 
+                  onClick={() => setShowMigration(true)}
+                  className="col-span-2 py-3 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl text-[10px] font-black uppercase hover:bg-blue-100 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  Migration Assistant
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
              </div>
@@ -413,6 +487,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <button onClick={onClose} className="w-full py-5 bg-gray-900 text-white font-black rounded-2xl hover:bg-black transition-all active:scale-95 uppercase tracking-widest text-sm">CLOSE & SAVE</button>
         </div>
       </div>
+      {showMigration && (
+        <MigrationModal 
+          onClose={() => setShowMigration(false)} 
+          onImport={(data) => {
+            onImportProducts?.(data);
+            setShowMigration(false);
+          }} 
+        />
+      )}
     </div>
   );
 };

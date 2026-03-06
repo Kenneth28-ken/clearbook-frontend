@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { MobileOrder, Product, CartItem, ItemType } from '../types';
-import { TAX_RATE } from '../constants';
 
 interface EditMobileOrderModalProps {
   order: MobileOrder;
@@ -43,7 +42,6 @@ const EditMobileOrderModal: React.FC<EditMobileOrderModalProps> = ({
         quantity: 1,
         type: product.type,
         selectedModifiers: [],
-        taxRate: TAX_RATE
       };
       setLocalItems(prev => [...prev, newItem]);
     }
