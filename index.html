@@ -40,12 +40,13 @@
 
         @media print {
             @page {
-                margin: 0;
-                size: auto;
+                size: 80mm auto;
+                margin: 0mm;
             }
             body {
                 margin: 0;
                 padding: 0;
+                width: 80mm;
                 background-color: white;
             }
             /* Hide everything by default */
@@ -62,11 +63,11 @@
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 100% !important; /* Fill the paper width */
-                margin: 0 !important;
-                padding: 0 !important;
+                width: 72mm !important; /* Standard printable area for 80mm paper */
+                margin: 0 auto !important;
+                padding: 2mm !important;
                 font-family: 'Courier New', Courier, monospace;
-                font-size: 14px; /* Readable size */
+                font-size: 12px; /* Standard readable size */
                 line-height: 1.2;
                 color: black;
                 background: white;
@@ -84,13 +85,13 @@
             }
 
             /* Optimize typography for thermal printing */
-            #receipt-content .text-2xl { font-size: 20px !important; font-weight: 900 !important; }
-            #receipt-content .text-xl { font-size: 18px !important; font-weight: 800 !important; }
-            #receipt-content .text-lg { font-size: 16px !important; font-weight: 700 !important; }
-            #receipt-content .text-base { font-size: 14px !important; font-weight: 600 !important; }
-            #receipt-content .text-sm { font-size: 14px !important; } /* Bump up small text */
-            #receipt-content .text-xs { font-size: 12px !important; } /* Bump up xs text */
-            #receipt-content .text-3xl { font-size: 24px !important; font-weight: 900 !important; }
+            #receipt-content .text-2xl { font-size: 16px !important; font-weight: 900 !important; }
+            #receipt-content .text-xl { font-size: 14px !important; font-weight: 800 !important; }
+            #receipt-content .text-lg { font-size: 14px !important; font-weight: 700 !important; }
+            #receipt-content .text-base { font-size: 12px !important; font-weight: 600 !important; }
+            #receipt-content .text-sm { font-size: 12px !important; }
+            #receipt-content .text-xs { font-size: 11px !important; }
+            #receipt-content .text-3xl { font-size: 18px !important; font-weight: 900 !important; }
             
             /* Remove any borders that might look faint */
             #receipt-content .border-t-\[12px\] { border-top: none !important; }
