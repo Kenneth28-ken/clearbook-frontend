@@ -209,65 +209,63 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
         )}
 
         <div className="flex-1 overflow-y-auto p-6 bg-gray-100 flex flex-col items-center">
-          <div id="receipt-content" className="bg-white shadow-xl border border-gray-200 font-mono text-base text-black flex flex-col print:shadow-none print:border-none print:m-0" style={{ width: '480px', maxWidth: '100%' }}>
+          <div id="receipt-content" className="bg-white w-full max-w-[420px] p-8 shadow-2xl border-t-[12px] border-black font-mono text-black flex flex-col print:shadow-none print:border-none print:m-0 print:w-full print:max-w-none">
              
              {/* Header */}
-             <div className="text-center p-6 border-b-2 border-dashed border-black">
-                <div className="font-bold text-2xl uppercase tracking-wider mb-2">{businessName}</div>
-                <div className="text-sm uppercase font-bold mt-2 leading-relaxed">
-                   {transaction.timestamp.toLocaleDateString()} &bull; {transaction.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+             <div className="text-center mb-6">
+                <div className="font-black text-3xl uppercase tracking-tighter mb-2 leading-none">{businessName}</div>
+                <div className="text-sm font-bold uppercase border-y-2 border-black py-2 my-2 leading-relaxed">
+                   {transaction.timestamp.toLocaleDateString()} <br/>
+                   {transaction.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
                 {(transaction.customerName || customerName) && (
-                  <div className="mt-2 text-sm font-bold uppercase">
+                  <div className="mt-3 font-black uppercase text-sm border-2 border-black rounded-lg px-3 py-1 inline-block">
                      Customer: {transaction.customerName || customerName}
                   </div>
                 )}
              </div>
 
-             {/* Items Header */}
-             <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-6 py-2 border-b-2 border-black font-bold text-sm uppercase">
-                <div className="text-left">Item</div>
-                <div className="text-center w-16">Qty</div>
-                <div className="text-right w-20">Price</div>
-             </div>
-
-             {/* Items List */}
-             <div className="px-6 py-4 space-y-1">
+             {/* Items */}
+             <div className="mb-6 border-b-2 border-dashed border-black pb-4">
                 {transaction.items.map((item, idx) => (
-                   <div key={idx} className="grid grid-cols-[1fr_auto_auto] gap-2 items-start font-bold text-black text-base">
-                      <div className="text-left leading-tight">{item.name}</div>
-                      <div className="text-center w-16 whitespace-nowrap">{item.quantity}{item.type === 'WEIGHT' ? 'kg' : 'x'}</div>
-                      <div className="text-right w-20 whitespace-nowrap">{currencySymbol}{(item.price * item.quantity).toFixed(2)}</div>
+                   <div key={idx} className="flex justify-between items-start mb-3 font-bold text-lg leading-tight">
+                      <div className="flex-1 pr-2">
+                        <span className="mr-2">{item.quantity}{item.type === 'WEIGHT' ? 'kg' : 'x'}</span>
+                        {item.name}
+                      </div>
+                      <div className="whitespace-nowrap">{currencySymbol}{(item.price * item.quantity).toFixed(2)}</div>
                    </div>
                 ))}
              </div>
 
              {/* Totals */}
-             <div className="px-6 py-4 border-t-2 border-dashed border-black space-y-2 text-base font-bold uppercase">
-                <div className="flex justify-between">
+             <div className="space-y-2 font-bold uppercase text-sm">
+                <div className="flex justify-between text-base">
                   <span>Subtotal</span>
                   <span>{currencySymbol}{(transaction.subtotal || transaction.total).toFixed(2)}</span>
                 </div>
+                
                 {transaction.discount && transaction.discount > 0 && (
-                  <div className="flex justify-between">
-                    <span>Coupon</span>
+                  <div className="flex justify-between text-base">
+                    <span>Coupon Redeemed</span>
                     <span>-{currencySymbol}{transaction.discount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between pt-2 border-t border-black text-lg">
+
+                <div className="flex justify-between text-3xl font-black border-t-4 border-black pt-4 mt-4 items-center">
                   <span>Total</span>
                   <span>{currencySymbol}{transaction.total.toFixed(2)}</span>
                 </div>
                 
-                {/* Coupon Info */}
-                <div className="pt-4 mt-2 border-t border-dashed border-gray-400 text-sm">
-                   <div className="flex justify-between">
-                     <span>Earned ({transaction.couponRate !== undefined ? transaction.couponRate : 5}%)</span>
-                     <span>+{currencySymbol}{(transaction.couponEarned !== undefined ? transaction.couponEarned : (transaction.total * 0.05)).toFixed(2)}</span>
+                {/* Coupon Section */}
+                <div className="border-t-2 border-dashed border-gray-400 pt-3 mt-4 text-sm">
+                   <div className="flex justify-between mb-1">
+                     <span>Coupon Earned ({transaction.couponRate ?? 5}%)</span>
+                     <span>+{currencySymbol}{(transaction.couponEarned ?? (transaction.total * 0.05)).toFixed(2)}</span>
                    </div>
                    {phoneNumber && (
-                     <div className="flex justify-between">
-                       <span>Balance</span>
+                     <div className="flex justify-between font-black text-base mt-2">
+                       <span>Coupon Balance</span>
                        <span>{currencySymbol}{((customers.find(c => c.phone === phoneNumber)?.couponBalance || 0)).toFixed(2)}</span>
                      </div>
                    )}
@@ -275,8 +273,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
              </div>
 
              {/* Footer */}
-             <div className="p-6 text-center text-sm font-bold uppercase border-t-2 border-black">
-                Thank you for your patronage!
+             <div className="mt-8 text-center font-black uppercase text-lg border-t-2 border-black pt-6">
+                Thank you for <br/> patronizing us!
              </div>
           </div>
         </div>
