@@ -58,12 +58,12 @@
                 visibility: visible;
             }
             #receipt-content {
-                position: absolute;
+                position: fixed;
                 left: 0;
                 top: 0;
-                width: 78mm; /* maximize width */
-                padding: 1mm; /* minimal padding */
-                margin: 0;
+                width: 78mm !important; /* maximize width */
+                padding: 1mm !important; /* minimal padding */
+                margin: 0 !important;
                 font-family: 'Courier New', Courier, monospace;
                 font-size: 11px; /* Smaller font to fit 48 chars */
                 line-height: 1.1;
@@ -72,6 +72,7 @@
                 box-shadow: none !important;
                 border: none !important;
                 border-radius: 0 !important;
+                z-index: 9999;
             }
             /* Optimize typography for thermal printing */
             #receipt-content .text-2xl { font-size: 14px !important; font-weight: bold; }

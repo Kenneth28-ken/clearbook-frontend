@@ -209,7 +209,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
         )}
 
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50 flex flex-col items-center">
-          <div id="receipt-content" className="bg-white w-full p-8 shadow-2xl border-t-[12px] border-black font-mono text-xs text-black rounded-b-2xl flex flex-col print:shadow-none print:border-none print:rounded-none print:w-full print:p-0 print:m-0">
+          <div id="receipt-content" className="bg-white w-full p-8 shadow-2xl border-t-[12px] border-black font-mono text-xs text-black rounded-b-2xl flex flex-col print:shadow-none print:border-none print:rounded-none">
              <div className="text-center mb-6">
                 <div className="font-black text-2xl tracking-tighter text-black uppercase mb-2">{businessName}</div>
                 <div className="uppercase font-black text-base text-black mt-2 border-y-2 border-black py-3 leading-tight">
