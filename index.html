@@ -37,6 +37,56 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+
+        @media print {
+            @page {
+                size: 80mm auto;
+                margin: 0mm;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+                width: 80mm;
+                background-color: white;
+            }
+            /* Hide everything by default */
+            body * {
+                visibility: hidden;
+            }
+            /* Show the receipt content */
+            #receipt-content, #receipt-content * {
+                visibility: visible;
+            }
+            #receipt-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 78mm; /* maximize width */
+                padding: 1mm; /* minimal padding */
+                margin: 0;
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 11px; /* Smaller font to fit 48 chars */
+                line-height: 1.1;
+                color: black;
+                background: white;
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+            }
+            /* Optimize typography for thermal printing */
+            #receipt-content .text-2xl { font-size: 14px !important; font-weight: bold; }
+            #receipt-content .text-xl { font-size: 13px !important; font-weight: bold; }
+            #receipt-content .text-lg { font-size: 12px !important; font-weight: bold; }
+            #receipt-content .text-base { font-size: 11px !important; }
+            #receipt-content .text-sm { font-size: 10px !important; }
+            #receipt-content .text-xs { font-size: 9px !important; }
+            #receipt-content .text-3xl { font-size: 16px !important; font-weight: bold; }
+            
+            /* Ensure black text */
+            #receipt-content * {
+                color: black !important;
+            }
+        }
     </style>
 <script type="importmap">
 {
