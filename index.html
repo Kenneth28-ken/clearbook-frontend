@@ -52,50 +52,40 @@
             /* Hide everything by default */
             body * {
                 visibility: hidden;
-                height: 0;
             }
             /* Show the receipt content */
             #receipt-content, #receipt-content * {
                 visibility: visible;
-                height: auto;
             }
             #receipt-content {
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 72mm !important; /* Standard printable area for 80mm paper */
-                margin: 0 auto !important;
-                padding: 2mm !important;
+                width: 78mm; /* maximize width */
+                padding: 1mm; /* minimal padding */
+                margin: 0;
                 font-family: 'Courier New', Courier, monospace;
-                font-size: 12px; /* Standard readable size */
-                line-height: 1.2;
+                font-size: 11px; /* Smaller font to fit 48 chars */
+                line-height: 1.1;
                 color: black;
                 background: white;
                 box-shadow: none !important;
                 border: none !important;
                 border-radius: 0 !important;
-                max-width: none !important;
             }
+            /* Optimize typography for thermal printing */
+            #receipt-content .text-2xl { font-size: 14px !important; font-weight: bold; }
+            #receipt-content .text-xl { font-size: 13px !important; font-weight: bold; }
+            #receipt-content .text-lg { font-size: 12px !important; font-weight: bold; }
+            #receipt-content .text-base { font-size: 11px !important; }
+            #receipt-content .text-sm { font-size: 10px !important; }
+            #receipt-content .text-xs { font-size: 9px !important; }
+            #receipt-content .text-3xl { font-size: 16px !important; font-weight: bold; }
             
-            /* Force black text and remove shadows */
+            /* Ensure black text */
             #receipt-content * {
                 color: black !important;
-                text-shadow: none !important;
-                box-shadow: none !important;
             }
-
-            /* Optimize typography for thermal printing */
-            #receipt-content .text-2xl { font-size: 16px !important; font-weight: 900 !important; }
-            #receipt-content .text-xl { font-size: 14px !important; font-weight: 800 !important; }
-            #receipt-content .text-lg { font-size: 14px !important; font-weight: 700 !important; }
-            #receipt-content .text-base { font-size: 12px !important; font-weight: 600 !important; }
-            #receipt-content .text-sm { font-size: 12px !important; }
-            #receipt-content .text-xs { font-size: 11px !important; }
-            #receipt-content .text-3xl { font-size: 18px !important; font-weight: 900 !important; }
-            
-            /* Remove any borders that might look faint */
-            #receipt-content .border-t-\[12px\] { border-top: none !important; }
-            #receipt-content .rounded-b-2xl { border-radius: 0 !important; }
         }
     </style>
 <script type="importmap">
