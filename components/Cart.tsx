@@ -112,8 +112,8 @@ const Cart: React.FC<CartProps> = ({
                   <div className="flex-1">
                     <h3 className="font-bold text-gray-800">{item.name}</h3>
                     <div className="text-xs text-gray-500 mt-0.5">
-                      {currencySymbol}{item.price.toFixed(2)} / {item.type.toLowerCase()}
-                      {item.selectedModifiers.length > 0 && (
+                      {currencySymbol}{item.price.toFixed(2)} / {item.type ? item.type.toLowerCase() : 'unit'}
+                      {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {item.selectedModifiers.map(m => (
                             <span key={m.id} className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded italic">+{m.name}</span>

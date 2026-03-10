@@ -338,15 +338,22 @@ const App: React.FC = () => {
             setWhatsappTokens(doc.data()?.whatsappTokens || 0);
             if (doc.data()?.couponRate !== undefined) setCouponRate(doc.data()?.couponRate);
             if (doc.data()?.categories) setCategories(doc.data()?.categories);
+        } else {
+            setTokens(0);
+            setWhatsappTokens(0);
+            setCouponRate(5);
+            setCategories(CATEGORIES);
         }
       });
     const unsubStaff = db.collection("users").doc(activeUid).collection("staff")
       .onSnapshot((snap) => {
         if (!snap.empty) setStaffList(snap.docs.map(d => ({ id: d.id, ...d.data() } as Staff)));
+        else setStaffList(STAFF_LIST);
       });
     const unsubAttendants = db.collection("users").doc(activeUid).collection("attendants")
       .onSnapshot((snap) => {
         if (!snap.empty) setAttendantsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as Attendant)));
+        else setAttendantsList(SERVER_LIST);
       });
     const unsubProducts = db.collection("users").doc(activeUid).collection("products")
       .onSnapshot((snap) => {
@@ -354,6 +361,8 @@ const App: React.FC = () => {
           const loadedProducts = snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
           loadedProducts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
           setProducts(loadedProducts);
+        } else {
+          setProducts([]);
         }
       });
     const unsubHistory = db.collection("users").doc(activeUid).collection("history")
@@ -365,6 +374,8 @@ const App: React.FC = () => {
             id: d.id,
             timestamp: parseDate(d.data()?.timestamp)
           } as TransactionRecord)));
+        } else {
+          setHistory([]);
         }
       });
     const unsubExpenses = db.collection("users").doc(activeUid).collection("expenses")
@@ -388,6 +399,8 @@ const App: React.FC = () => {
             phone: d.id,
             lastVisit: parseDate(d.data()?.lastVisit)
           } as Customer)));
+        } else {
+          setCustomers([]);
         }
       });
     const unsubMobile = db.collection("users").doc(activeUid).collection("mobile_orders")
@@ -749,10 +762,10 @@ const App: React.FC = () => {
       cartId,
       productId: product.id,
       name: product.name,
-      price: product.price + modifiers.reduce((acc, m) => acc + m.price, 0),
+      price: (product.price || 0) + modifiers.reduce((acc, m) => acc + (m.price || 0), 0),
       costPrice: product.costPrice || 0,
       quantity: qty,
-      type: product.type,
+      type: product.type || ItemType.UNIT,
       selectedModifiers: modifiers,
     };
     setCart(prev => [...prev, newItem]);
