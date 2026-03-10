@@ -428,6 +428,29 @@ const App: React.FC = () => {
       if (u) {
         setUser(u);
         const uid = impersonatedUid || u.uid;
+        
+        // Prevent data leakage between accounts on the same device
+        const lastUid = localStorage.getItem('cb_last_uid');
+        if (lastUid && lastUid !== uid) {
+          const keysToClear = [
+            'cb_staff', 'cb_attendants', 'cb_categories', 'cb_couponRate', 
+            'cb_products', 'cb_history', 'cb_customers', 'cb_tokens', 
+            'cb_wa_tokens', 'cb_active_cart', 'cb_active_table', 
+            'cb_mobile_orders', 'cb_expenses', 'cb_business_name'
+          ];
+          keysToClear.forEach(k => localStorage.removeItem(k));
+          
+          setProducts([]);
+          setHistory([]);
+          setCustomers([]);
+          setStaffList(STAFF_LIST);
+          setAttendantsList(SERVER_LIST);
+          setMobileOrders([]);
+          setExpenses([]);
+          setCart([]);
+        }
+        localStorage.setItem('cb_last_uid', uid);
+        
         setActiveUid(uid);
 
         // Update central users registry in background (don't block UI)
@@ -450,6 +473,25 @@ const App: React.FC = () => {
         setActiveUid('');
         setImpersonatedUid(null);
         setAccountStatus('ACTIVE');
+        
+        // Clear state and cache on logout
+        const keysToClear = [
+          'cb_staff', 'cb_attendants', 'cb_categories', 'cb_couponRate', 
+          'cb_products', 'cb_history', 'cb_customers', 'cb_tokens', 
+          'cb_wa_tokens', 'cb_active_cart', 'cb_active_table', 
+          'cb_mobile_orders', 'cb_expenses', 'cb_business_name', 'cb_last_uid'
+        ];
+        keysToClear.forEach(k => localStorage.removeItem(k));
+        
+        setProducts([]);
+        setHistory([]);
+        setCustomers([]);
+        setStaffList(STAFF_LIST);
+        setAttendantsList(SERVER_LIST);
+        setMobileOrders([]);
+        setExpenses([]);
+        setCart([]);
+        
         if (view !== AppView.CUSTOMER_MENU) setView(AppView.LOGIN);
       }
       setAuthLoading(false);
