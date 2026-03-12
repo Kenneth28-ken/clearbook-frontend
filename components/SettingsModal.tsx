@@ -25,6 +25,10 @@ interface SettingsModalProps {
   onSetFirstTimeMessage: (text: string) => void;
   businessName: string;
   onSetBusinessName: (name: string) => void;
+  businessAddress: string;
+  onSetBusinessAddress: (address: string) => void;
+  businessPhone: string;
+  onSetBusinessPhone: (phone: string) => void;
   categories: string[];
   onUpdateCategories: (categories: string[]) => void;
   couponRate: number;
@@ -54,6 +58,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onSetFirstTimeMessage,
   businessName,
   onSetBusinessName,
+  businessAddress,
+  onSetBusinessAddress,
+  businessPhone,
+  onSetBusinessPhone,
   categories,
   onUpdateCategories,
   couponRate,
@@ -274,6 +282,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                value={businessName}
                onChange={(e) => onSetBusinessName(e.target.value)}
                placeholder="ENTER BUSINESS NAME..."
+             />
+          </div>
+
+          <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
+             <div className="flex items-center gap-3 mb-3">
+               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Business Address</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase">Appears on receipts.</p>
+             </div>
+             <input 
+               type="text"
+               className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500 transition-colors text-gray-900 uppercase"
+               value={businessAddress}
+               onChange={(e) => onSetBusinessAddress(e.target.value)}
+               placeholder="ENTER BUSINESS ADDRESS..."
+             />
+          </div>
+
+          <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
+             <div className="flex items-center gap-3 mb-3">
+               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Business Phone</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase">Appears on receipts.</p>
+             </div>
+             <input 
+               type="text"
+               className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500 transition-colors text-gray-900 uppercase"
+               value={businessPhone}
+               onChange={(e) => onSetBusinessPhone(e.target.value)}
+               placeholder="ENTER BUSINESS PHONE..."
              />
           </div>
 

@@ -19,6 +19,10 @@ interface ReceiptModalProps {
   printerType?: 'USB' | 'BLUETOOTH' | 'PROXY';
   firstTimeMessageTemplate?: string;
   businessName?: string;
+  businessAddress?: string;
+  businessPhone?: string;
+  onSetBusinessAddress?: (address: string) => void;
+  onSetBusinessPhone?: (phone: string) => void;
 }
 
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ 
@@ -37,7 +41,11 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
   customers = [],
   printerType = 'USB',
   firstTimeMessageTemplate,
-  businessName = 'Clear Book POS'
+  businessName = 'Clear Book POS',
+  businessAddress = '',
+  businessPhone = '',
+  onSetBusinessAddress,
+  onSetBusinessPhone
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
@@ -45,6 +53,14 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const [showWhatsAppInput, setShowWhatsAppInput] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState(transaction.customerPhone || '');
   const [customerName, setCustomerName] = useState(transaction.customerName || '');
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (onSetBusinessAddress) onSetBusinessAddress(e.target.value);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (onSetBusinessPhone) onSetBusinessPhone(e.target.value);
+  };
 
   // REPEAT CUSTOMER RECOGNITION (By Phone)
   useEffect(() => {
@@ -88,7 +104,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
             currency: currencySymbol,
             customerName: customerName || transaction.customerName || 'Walk-in',
             customerPhone: phoneNumber || transaction.customerPhone || 'N/A',
-            businessName: businessName
+            businessName: businessName,
+            businessAddress: businessAddress,
+            businessPhone: businessPhone
           }, (key, value) => {
             if (typeof value === 'object' && value !== null) {
               if (cache.has(value)) {
@@ -213,8 +231,35 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
              
              {/* Header */}
              <div className="text-center mb-6">
-                <div className="font-black text-3xl uppercase tracking-tighter mb-2 leading-none">{businessName}</div>
-                <div className="text-sm font-bold uppercase border-y-2 border-black py-2 my-2 leading-relaxed">
+                <div className="font-black text-4xl uppercase tracking-tighter mb-2 leading-none">{businessName}</div>
+                
+                <div className="mb-4 flex flex-col items-center gap-2 w-full">
+                   {showPrintView ? (
+                     <>
+                       {businessAddress && <div className="w-full text-center font-black text-sm uppercase">{businessAddress}</div>}
+                       {businessPhone && <div className="w-full text-center font-black text-sm uppercase">{businessPhone}</div>}
+                     </>
+                   ) : (
+                     <>
+                       <input 
+                         type="text" 
+                         placeholder="BUSINESS ADDRESS..." 
+                         value={businessAddress}
+                         onChange={handleAddressChange}
+                         className="w-full text-center font-black text-sm uppercase outline-none border-2 border-gray-300 rounded-lg p-2 focus:border-black bg-gray-50 placeholder-gray-400 transition-colors" 
+                       />
+                       <input 
+                         type="text" 
+                         placeholder="PHONE NUMBER..." 
+                         value={businessPhone}
+                         onChange={handlePhoneChange}
+                         className="w-full text-center font-black text-sm uppercase outline-none border-2 border-gray-300 rounded-lg p-2 focus:border-black bg-gray-50 placeholder-gray-400 transition-colors" 
+                       />
+                     </>
+                   )}
+                </div>
+
+                <div className="text-sm font-black uppercase border-y-2 border-black py-2 my-2 leading-relaxed">
                    {transaction.timestamp.toLocaleDateString()} <br/>
                    {transaction.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
@@ -228,7 +273,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
              {/* Items */}
              <div className="mb-6 border-b-2 border-dashed border-black pb-4">
                 {transaction.items.map((item, idx) => (
-                   <div key={idx} className="flex justify-between items-start mb-3 font-bold text-lg leading-tight">
+                   <div key={idx} className="flex justify-between items-start mb-3 font-black text-lg leading-tight">
                       <div className="flex-1 pr-2">
                         <span className="mr-2">{item.quantity}{item.type === 'WEIGHT' ? 'kg' : 'x'}</span>
                         {item.name}
@@ -239,7 +284,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
              </div>
 
              {/* Totals */}
-             <div className="space-y-2 font-bold uppercase text-sm">
+             <div className="space-y-2 font-black uppercase text-sm">
                 <div className="flex justify-between text-base">
                   <span>Subtotal</span>
                   <span>{currencySymbol}{(transaction.subtotal || transaction.total).toFixed(2)}</span>

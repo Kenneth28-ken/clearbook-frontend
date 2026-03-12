@@ -200,6 +200,8 @@ const App: React.FC = () => {
   const [printerType, setPrinterType] = useState<'USB' | 'BLUETOOTH' | 'PROXY'>(() => (localStorage.getItem('cb_printer_type') as any) || 'USB');
   const [firstTimeMessage, setFirstTimeMessage] = useState(() => localStorage.getItem('cb_first_time_msg') || 'Welcome to ClearBook! Thank you for your first purchase. Here is a coupon for your next visit!');
   const [businessName, setBusinessName] = useState(() => localStorage.getItem('cb_business_name') || 'Clear Book POS');
+  const [businessAddress, setBusinessAddress] = useState(() => localStorage.getItem('cb_business_address') || '');
+  const [businessPhone, setBusinessPhone] = useState(() => localStorage.getItem('cb_business_phone') || '');
 
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -323,11 +325,13 @@ const App: React.FC = () => {
       localStorage.setItem('cb_printer_type', printerType);
       localStorage.setItem('cb_first_time_msg', firstTimeMessage);
       localStorage.setItem('cb_business_name', businessName);
+      localStorage.setItem('cb_business_address', businessAddress);
+      localStorage.setItem('cb_business_phone', businessPhone);
       localStorage.setItem('cb_expenses', safeJsonStringify(expenses));
     } catch (e) {
       console.error("Failed to save state to localStorage:", e);
     }
-  }, [staffList, attendantsList, products, history, customers, tokens, whatsappTokens, cart, activeTableLabel, currencySymbol, whatsappApi, whatsappMethod, whatsappCompatibilityMode, thermalProxy, mobileOrders, printerType, firstTimeMessage, businessName, expenses]);
+  }, [staffList, attendantsList, products, history, customers, tokens, whatsappTokens, cart, activeTableLabel, currencySymbol, whatsappApi, whatsappMethod, whatsappCompatibilityMode, thermalProxy, mobileOrders, printerType, firstTimeMessage, businessName, businessAddress, businessPhone, expenses]);
 
   useEffect(() => {
     if (!activeUid) return;
@@ -449,7 +453,7 @@ const App: React.FC = () => {
             'cb_staff', 'cb_attendants', 'cb_categories', 'cb_couponRate', 
             'cb_products', 'cb_history', 'cb_customers', 'cb_tokens', 
             'cb_wa_tokens', 'cb_active_cart', 'cb_active_table', 
-            'cb_mobile_orders', 'cb_expenses', 'cb_business_name'
+            'cb_mobile_orders', 'cb_expenses', 'cb_business_name', 'cb_business_address', 'cb_business_phone'
           ];
           keysToClear.forEach(k => localStorage.removeItem(k));
           
@@ -477,6 +481,8 @@ const App: React.FC = () => {
           if (userDoc.exists) {
             setAccountStatus(userDoc.data()?.status || 'ACTIVE');
             if (userDoc.data()?.businessName) setBusinessName(userDoc.data()?.businessName);
+            if (userDoc.data()?.businessAddress) setBusinessAddress(userDoc.data()?.businessAddress);
+            if (userDoc.data()?.businessPhone) setBusinessPhone(userDoc.data()?.businessPhone);
           }
         }).catch(e => console.warn("Background status check failed", e));
 
@@ -492,7 +498,7 @@ const App: React.FC = () => {
           'cb_staff', 'cb_attendants', 'cb_categories', 'cb_couponRate', 
           'cb_products', 'cb_history', 'cb_customers', 'cb_tokens', 
           'cb_wa_tokens', 'cb_active_cart', 'cb_active_table', 
-          'cb_mobile_orders', 'cb_expenses', 'cb_business_name', 'cb_last_uid'
+          'cb_mobile_orders', 'cb_expenses', 'cb_business_name', 'cb_business_address', 'cb_business_phone', 'cb_last_uid'
         ];
         keysToClear.forEach(k => localStorage.removeItem(k));
         
@@ -1085,6 +1091,20 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateBusinessAddress = async (address: string) => {
+    setBusinessAddress(address);
+    if (activeUid) {
+      await db.collection("pos_accounts").doc(activeUid).set({ businessAddress: address }, { merge: true });
+    }
+  };
+
+  const handleUpdateBusinessPhone = async (phone: string) => {
+    setBusinessPhone(phone);
+    if (activeUid) {
+      await db.collection("pos_accounts").doc(activeUid).set({ businessPhone: phone }, { merge: true });
+    }
+  };
+
   const handleUpdateCategories = async (newCategories: string[]) => {
     setCategories(newCategories);
     if (activeUid) {
@@ -1280,6 +1300,10 @@ const App: React.FC = () => {
         onSetFirstTimeMessage={setFirstTimeMessage}
         businessName={businessName}
         onSetBusinessName={handleUpdateBusinessName}
+        businessAddress={businessAddress}
+        onSetBusinessAddress={handleUpdateBusinessAddress}
+        businessPhone={businessPhone}
+        onSetBusinessPhone={handleUpdateBusinessPhone}
         categories={categories}
         onUpdateCategories={handleUpdateCategories}
         couponRate={couponRate}
@@ -1308,6 +1332,10 @@ const App: React.FC = () => {
           printerType={printerType}
           firstTimeMessageTemplate={firstTimeMessage}
           businessName={businessName}
+          businessAddress={businessAddress}
+          businessPhone={businessPhone}
+          onSetBusinessAddress={handleUpdateBusinessAddress}
+          onSetBusinessPhone={handleUpdateBusinessPhone}
         />
       )}
       {showServerSelect && <ServerModal attendants={attendantsList} onSelect={setCurrentServer} onClose={() => setShowServerSelect(false)} />}

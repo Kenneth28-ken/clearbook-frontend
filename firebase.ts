@@ -19,7 +19,7 @@ export const db = firebase.firestore();
 
 // Use long polling for better connectivity in some environments
 db.settings({
-  // experimentalForceLongPolling: true
+  experimentalForceLongPolling: true
 });
 
 // Enable offline persistence
