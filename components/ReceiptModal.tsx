@@ -236,8 +236,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 <div className="mb-4 flex flex-col items-center gap-2 w-full">
                    {showPrintView ? (
                      <>
-                       {businessAddress && <div className="w-full text-center font-black text-sm uppercase">{businessAddress}</div>}
-                       {businessPhone && <div className="w-full text-center font-black text-sm uppercase">{businessPhone}</div>}
+                       {businessAddress && <div className="w-full text-center font-black text-xl uppercase">{businessAddress}</div>}
+                       {businessPhone && <div className="w-full text-center font-black text-xl uppercase">{businessPhone}</div>}
                      </>
                    ) : (
                      <>
@@ -246,25 +246,25 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
                          placeholder="BUSINESS ADDRESS..." 
                          value={businessAddress}
                          onChange={handleAddressChange}
-                         className="w-full text-center font-black text-sm uppercase outline-none border-2 border-gray-300 rounded-lg p-2 focus:border-black bg-gray-50 placeholder-gray-400 transition-colors" 
+                         className="w-full text-center font-black text-xl uppercase outline-none border-2 border-gray-300 rounded-lg p-2 focus:border-black bg-gray-50 placeholder-gray-400 transition-colors" 
                        />
                        <input 
                          type="text" 
                          placeholder="PHONE NUMBER..." 
                          value={businessPhone}
                          onChange={handlePhoneChange}
-                         className="w-full text-center font-black text-sm uppercase outline-none border-2 border-gray-300 rounded-lg p-2 focus:border-black bg-gray-50 placeholder-gray-400 transition-colors" 
+                         className="w-full text-center font-black text-xl uppercase outline-none border-2 border-gray-300 rounded-lg p-2 focus:border-black bg-gray-50 placeholder-gray-400 transition-colors" 
                        />
                      </>
                    )}
                 </div>
 
-                <div className="text-sm font-black uppercase border-y-2 border-black py-2 my-2 leading-relaxed">
+                <div className="text-lg font-black uppercase border-y-2 border-black py-2 my-2 leading-relaxed">
                    {transaction.timestamp.toLocaleDateString()} <br/>
                    {transaction.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
                 {(transaction.customerName || customerName) && (
-                  <div className="mt-3 font-black uppercase text-sm border-2 border-black rounded-lg px-3 py-1 inline-block">
+                  <div className="mt-3 font-black uppercase text-lg border-2 border-black rounded-lg px-3 py-1 inline-block">
                      Customer: {transaction.customerName || customerName}
                   </div>
                 )}
@@ -273,7 +273,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
              {/* Items */}
              <div className="mb-6 border-b-2 border-dashed border-black pb-4">
                 {transaction.items.map((item, idx) => (
-                   <div key={idx} className="flex justify-between items-start mb-3 font-black text-lg leading-tight">
+                   <div key={idx} className="flex justify-between items-start mb-3 font-black text-2xl leading-tight">
                       <div className="flex-1 pr-2">
                         <span className="mr-2">{item.quantity}{item.type === 'WEIGHT' ? 'kg' : 'x'}</span>
                         {item.name}
@@ -284,32 +284,32 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
              </div>
 
              {/* Totals */}
-             <div className="space-y-2 font-black uppercase text-sm">
-                <div className="flex justify-between text-base">
+             <div className="space-y-2 font-black uppercase text-lg">
+                <div className="flex justify-between text-xl">
                   <span>Subtotal</span>
                   <span>{currencySymbol}{(transaction.subtotal || transaction.total).toFixed(2)}</span>
                 </div>
                 
                 {transaction.discount && transaction.discount > 0 && (
-                  <div className="flex justify-between text-base">
+                  <div className="flex justify-between text-xl">
                     <span>Coupon Redeemed</span>
                     <span>-{currencySymbol}{transaction.discount.toFixed(2)}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between text-3xl font-black border-t-4 border-black pt-4 mt-4 items-center">
+                <div className="flex justify-between text-4xl font-black border-t-4 border-black pt-4 mt-4 items-center">
                   <span>Total</span>
                   <span>{currencySymbol}{transaction.total.toFixed(2)}</span>
                 </div>
                 
                 {/* Coupon Section */}
-                <div className="border-t-2 border-dashed border-gray-400 pt-3 mt-4 text-sm">
+                <div className="border-t-2 border-dashed border-gray-400 pt-3 mt-4 text-lg">
                    <div className="flex justify-between mb-1">
                      <span>Coupon Earned ({transaction.couponRate ?? 5}%)</span>
                      <span>+{currencySymbol}{(transaction.couponEarned ?? (transaction.total * 0.05)).toFixed(2)}</span>
                    </div>
                    {phoneNumber && (
-                     <div className="flex justify-between font-black text-base mt-2">
+                     <div className="flex justify-between font-black text-xl mt-2">
                        <span>Coupon Balance</span>
                        <span>{currencySymbol}{((customers.find(c => c.phone === phoneNumber)?.couponBalance || 0)).toFixed(2)}</span>
                      </div>

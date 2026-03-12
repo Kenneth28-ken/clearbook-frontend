@@ -64,7 +64,7 @@
                 width: 78mm !important; /* maximize width */
                 padding: 1mm !important; /* minimal padding */
                 margin: 0 !important;
-                font-family: 'Courier New', Courier, monospace;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
                 font-size: 11px; /* Smaller font to fit 48 chars */
                 line-height: 1.1;
                 color: black;
@@ -75,13 +75,17 @@
                 z-index: 9999;
             }
             /* Optimize typography for thermal printing */
-            #receipt-content .text-2xl { font-size: 14px !important; font-weight: bold; }
-            #receipt-content .text-xl { font-size: 13px !important; font-weight: bold; }
-            #receipt-content .text-lg { font-size: 12px !important; font-weight: bold; }
-            #receipt-content .text-base { font-size: 11px !important; }
-            #receipt-content .text-sm { font-size: 10px !important; }
-            #receipt-content .text-xs { font-size: 9px !important; }
-            #receipt-content .text-3xl { font-size: 16px !important; font-weight: bold; }
+            #receipt-content .text-4xl { font-size: 24px !important; font-weight: 900 !important; }
+            #receipt-content .text-3xl { font-size: 20px !important; font-weight: 900 !important; }
+            #receipt-content .text-2xl { font-size: 18px !important; font-weight: 900 !important; }
+            #receipt-content .text-xl { font-size: 16px !important; font-weight: 900 !important; }
+            #receipt-content .text-lg { font-size: 14px !important; font-weight: 900 !important; }
+            #receipt-content .text-base { font-size: 12px !important; font-weight: 700 !important; }
+            #receipt-content .text-sm { font-size: 11px !important; font-weight: 700 !important; }
+            #receipt-content .text-xs { font-size: 10px !important; font-weight: 700 !important; }
+            
+            #receipt-content .font-black { font-weight: 900 !important; -webkit-text-stroke: 0.5px black; }
+            #receipt-content .font-bold { font-weight: 700 !important; }
             
             /* Ensure black text */
             #receipt-content * {
