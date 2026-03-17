@@ -217,6 +217,25 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ history, onClose, onReprint
                           </p>
                         </div>
 
+                        <div className="w-28 shrink-0">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Payment</p>
+                          <div className="flex flex-col gap-1 items-start">
+                            {tx.payments && tx.payments.length > 0 ? tx.payments.map((p, i) => (
+                              <span key={i} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${
+                                p.method === 'CASH' ? 'bg-green-100 text-green-700' :
+                                p.method === 'CARD' ? 'bg-blue-100 text-blue-700' :
+                                'bg-orange-100 text-orange-700'
+                              }`}>
+                                {p.method === 'MOBILE' ? 'TRANSFER' : p.method}
+                              </span>
+                            )) : (
+                              <span className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest bg-gray-100 text-gray-500">
+                                UNKNOWN
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
                         <div className="text-right shrink-0">
                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Paid</p>
                           <p className="text-2xl font-black text-gray-900 tabular-nums">
