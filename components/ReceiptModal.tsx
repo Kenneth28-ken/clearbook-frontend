@@ -89,7 +89,28 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
     if (printerType === 'PROXY' && thermalProxy && thermalProxy.trim() !== '') {
         try {
           // Robust circular reference handler
-          const cache = new Set();
+          const getCircularReplacer = () => {
+            const seen = new WeakSet();
+            return (key: string, value: any) => {
+              if (typeof value === "object" && value !== null) {
+                if (seen.has(value)) {
+                  return;
+                }
+                seen.add(value);
+                
+                // Handle Firestore Timestamps
+                if (value.toDate && typeof value.toDate === 'function') {
+                   return value.toDate().toISOString();
+                }
+                // Check for path property which is common in DocumentReference-like objects
+                if (value.path && typeof value.path === 'string' && value.firestore) {
+                   return value.path;
+                }
+              }
+              return value;
+            };
+          };
+
           const safePayload = JSON.stringify({
             id: transaction.id,
             timestamp: transaction.timestamp,
@@ -107,26 +128,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
             businessName: businessName,
             businessAddress: businessAddress,
             businessPhone: businessPhone
-          }, (key, value) => {
-            if (typeof value === 'object' && value !== null) {
-              if (cache.has(value)) {
-                // Circular reference found, discard key
-                return;
-              }
-              cache.add(value);
-              
-              // Handle Firestore types safely if possible, otherwise let them be stringified as objects
-              // We check for toDate/toDateString methods which are common in Timestamp-like objects
-              if (value.toDate && typeof value.toDate === 'function') {
-                 return value.toDate().toISOString();
-              }
-              // Check for path property which is common in DocumentReference-like objects
-              if (value.path && typeof value.path === 'string' && value.firestore) {
-                 return value.path;
-              }
-            }
-            return value;
-          });
+          }, getCircularReplacer());
 
           await fetch(thermalProxy, {
             method: 'POST',

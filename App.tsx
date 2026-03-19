@@ -56,15 +56,19 @@ const safeJsonStringify = (obj: any) => {
   try {
     return JSON.stringify(obj);
   } catch (e) {
-    // If standard stringify fails, use a replacer to handle circular references
-    const cache = new Set();
-    return JSON.stringify(obj, (key, value) => {
-      if (typeof value === 'object' && value !== null) {
-        if (cache.has(value)) return; // Discard circular reference
-        cache.add(value);
-      }
-      return value;
-    });
+    const getCircularReplacer = () => {
+      const seen = new WeakSet();
+      return (key: string, value: any) => {
+        if (typeof value === "object" && value !== null) {
+          if (seen.has(value)) {
+            return;
+          }
+          seen.add(value);
+        }
+        return value;
+      };
+    };
+    return JSON.stringify(obj, getCircularReplacer());
   }
 };
 
