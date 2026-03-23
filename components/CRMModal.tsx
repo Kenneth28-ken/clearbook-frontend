@@ -8,10 +8,111 @@ interface CRMModalProps {
   whatsappApi?: string;
   onUpdateName?: (phone: string, name: string) => void | Promise<void>;
   whatsappTokens: number;
+  onImportCustomers?: (customers: { name: string, phone: string }[]) => void;
 }
 
-const CRMModal: React.FC<CRMModalProps> = ({ customers, onClose, whatsappApi, onUpdateName, whatsappTokens }) => {
+const CRMModal: React.FC<CRMModalProps> = ({ customers, onClose, whatsappApi, onUpdateName, whatsappTokens, onImportCustomers }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [pastedContacts, setPastedContacts] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handlePasteContacts = () => {
+    if (!pastedContacts.trim()) {
+      alert("Please paste some contacts first.");
+      return;
+    }
+
+    const lines = pastedContacts.split('\n');
+    const imported: { name: string, phone: string }[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (!trimmed) continue;
+
+      if (trimmed.includes(',')) {
+        const parts = trimmed.split(',');
+        const name = parts[0].trim();
+        const phone = parts[1].replace(/[^0-9+]/g, '');
+        if (phone) imported.push({ name, phone });
+      } else {
+        const phoneMatch = trimmed.match(/(\+?[\d\s\-\(\)]{7,})/);
+        if (phoneMatch) {
+          const rawPhone = phoneMatch[0];
+          const phone = rawPhone.replace(/[^0-9+]/g, '');
+          let name = trimmed.replace(rawPhone, '').replace(/^[-:\s,]+|[-:\s,]+$/g, '').trim();
+          
+          if (!name && i > 0) {
+            const prevLine = lines[i-1].trim();
+            if (prevLine && !prevLine.match(/(\+?[\d\s\-\(\)]{7,})/)) {
+              name = prevLine;
+            }
+          }
+
+          if (phone) {
+            imported.push({ name, phone });
+          }
+        } else {
+          const phone = trimmed.replace(/[^0-9+]/g, '');
+          if (phone.length >= 7) {
+            imported.push({ name: '', phone });
+          }
+        }
+      }
+    }
+
+    if (imported.length > 0) {
+      if (onImportCustomers) onImportCustomers(imported);
+      setPastedContacts('');
+      setShowAddContact(false);
+    } else {
+      alert("Could not find any valid phone numbers in the pasted text.");
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split('\n');
+      const imported: { name: string, phone: string }[] = [];
+
+      lines.forEach((line, index) => {
+        if (index === 0 && line.toLowerCase().includes('phone')) {
+          return; // Skip header
+        }
+        const parts = line.split(',');
+        if (parts.length >= 2) {
+          const name = parts[0].trim();
+          const phone = parts[1].trim().replace(/[^0-9+]/g, '');
+          if (phone) {
+            imported.push({ name, phone });
+          }
+        } else if (parts.length === 1) {
+          const phone = parts[0].trim().replace(/[^0-9+]/g, '');
+          if (phone) {
+            imported.push({ name: '', phone });
+          }
+        }
+      });
+
+      if (imported.length > 0 && onImportCustomers) {
+        onImportCustomers(imported);
+      } else {
+        alert("No valid contacts found in the file. Ensure it's a CSV with Name,Phone format.");
+      }
+      
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const templates = [
     { id: 'thanks', label: 'Thank You', message: "Thank you for shopping with us! How was your experience today?" },
@@ -21,8 +122,10 @@ const CRMModal: React.FC<CRMModalProps> = ({ customers, onClose, whatsappApi, on
     { id: 'sunday', label: 'Sunday Special☀️', message: "Happy Sunday! ☀️ Visit us today for our special Sunday family grocery bundles." },
   ];
 
+  const s = searchTerm.toLowerCase();
+  const sPhone = s.replace(/[^0-9+]/g, '');
   const filteredCustomers = customers.filter(c => 
-    c.phone.includes(searchTerm) || (c.name && c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (sPhone && c.phone.includes(sPhone)) || (c.name && c.name.toLowerCase().includes(s))
   );
 
   const sendMessage = (phone: string, text: string) => {
@@ -66,8 +169,8 @@ const CRMModal: React.FC<CRMModalProps> = ({ customers, onClose, whatsappApi, on
           
           {/* Left: Customer Database List */}
           <div className="w-full md:w-[60%] flex flex-col border-r bg-white overflow-hidden">
-             <div className="p-6 border-b shrink-0 bg-gray-50">
-                <div className="relative">
+             <div className="p-6 border-b shrink-0 bg-gray-50 flex gap-3 items-center">
+                <div className="relative flex-1">
                    {/* FIXED: Text color set to gray-900 so letters are black */}
                    <input 
                      type="text" 
@@ -80,7 +183,59 @@ const CRMModal: React.FC<CRMModalProps> = ({ customers, onClose, whatsappApi, on
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                    </svg>
                 </div>
+                <input 
+                  type="file" 
+                  accept=".csv,.txt" 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  className="px-6 py-4 bg-green-100 text-green-700 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-green-200 transition-colors flex items-center gap-2 shadow-sm shrink-0"
+                  title="Import CSV (Name, Phone)"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span className="hidden sm:inline">Import</span>
+                </button>
+                <button 
+                  onClick={() => setShowAddContact(!showAddContact)} 
+                  className="px-6 py-4 bg-green-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-green-500 transition-colors flex items-center gap-2 shadow-sm shrink-0"
+                  title="Paste Contacts"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <span className="hidden sm:inline">Paste</span>
+                </button>
              </div>
+
+             {showAddContact && (
+               <div className="p-6 bg-green-50 border-b border-green-100 flex flex-col gap-3">
+                 <div className="flex justify-between items-center">
+                   <span className="text-xs font-bold text-green-800 uppercase tracking-widest">Paste Contacts (Name & Phone)</span>
+                   <button onClick={() => setShowAddContact(false)} className="text-green-600 hover:text-green-800 p-1">
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                   </button>
+                 </div>
+                 <textarea 
+                   placeholder="John Doe 08012345678&#10;Jane Smith +1234567890&#10;09087654321"
+                   className="w-full h-32 px-4 py-3 bg-white border-2 border-green-200 focus:border-green-500 rounded-xl font-bold outline-none text-gray-900 resize-none custom-scrollbar"
+                   value={pastedContacts}
+                   onChange={(e) => setPastedContacts(e.target.value)}
+                 />
+                 <div className="flex justify-end">
+                   <button 
+                     onClick={handlePasteContacts}
+                     className="px-8 py-3 bg-green-600 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-green-500 transition-colors shadow-sm"
+                   >
+                     Import Pasted Contacts
+                   </button>
+                 </div>
+               </div>
+             )}
 
              <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
                 {filteredCustomers.length === 0 ? (

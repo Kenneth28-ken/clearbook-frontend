@@ -534,6 +534,46 @@ const App: React.FC = () => {
     alert("Returned to Master Account");
   };
 
+  const handleImportCustomers = async (importedCustomers: { name: string, phone: string }[]) => {
+    if (!activeUid) return;
+    const now = new Date();
+    const batch = db.batch();
+    const newCustomers: Customer[] = [];
+
+    importedCustomers.forEach(c => {
+      if (!c.phone) return;
+      const existing = customers.find(ex => ex.phone === c.phone);
+      const updatedCustomer: Customer = {
+        phone: c.phone,
+        name: c.name || existing?.name || 'Walk-in',
+        lastVisit: existing?.lastVisit || now,
+        visitCount: existing?.visitCount || 0,
+        couponBalance: existing?.couponBalance || 0
+      };
+      newCustomers.push(updatedCustomer);
+      
+      const ref = db.collection("users").doc(activeUid).collection("customers").doc(c.phone);
+      batch.set(ref, {
+        name: updatedCustomer.name,
+        lastVisit: firebase.firestore.Timestamp.fromDate(updatedCustomer.lastVisit),
+        visitCount: updatedCustomer.visitCount,
+        couponBalance: updatedCustomer.couponBalance
+      }, { merge: true });
+    });
+
+    try {
+      await batch.commit();
+      setCustomers(prev => {
+        const other = prev.filter(c => !newCustomers.find(nc => nc.phone === c.phone));
+        return [...newCustomers, ...other];
+      });
+      alert(`Successfully imported ${newCustomers.length} contacts.`);
+    } catch (e) {
+      console.error("Import failed", e);
+      alert("Failed to import contacts.");
+    }
+  };
+
   const handleSaveCustomer = async (phone: string, name: string, transactionId?: string, couponEarned: number = 0, couponRedeemed: number = 0) => {
     if (!phone) return;
     const now = new Date();
@@ -1344,7 +1384,7 @@ const App: React.FC = () => {
       )}
       {showServerSelect && <ServerModal attendants={attendantsList} onSelect={setCurrentServer} onClose={() => setShowServerSelect(false)} />}
       {showTokenRecharge && <TokenRechargeModal onRecharge={handleTokenRecharge} onClose={() => setShowTokenRecharge(false)} currencySymbol={currencySymbol} />}
-      {showCRM && <CRMModal customers={customers} onClose={() => setShowCRM(false)} whatsappTokens={whatsappTokens} onUpdateName={(p, n) => handleSaveCustomer(p, n)} />}
+      {showCRM && <CRMModal customers={customers} onClose={() => setShowCRM(false)} whatsappTokens={whatsappTokens} onUpdateName={(p, n) => handleSaveCustomer(p, n)} onImportCustomers={handleImportCustomers} />}
       {showStaffManagement && <StaffManagementModal staffList={staffList} attendantsList={attendantsList} onClose={() => setShowStaffManagement(false)} onUpdateStaff={handleUpdateStaff} onAddStaff={handleAddStaff} onRemoveStaff={handleRemoveStaff} onUpdateAttendant={handleUpdateAttendant} onAddAttendant={handleAddAttendant} onRemoveAttendant={handleRemoveAttendant} />}
       {showQRCode && <QRCodeModal onClose={() => setShowQRCode(false)} />}
       {showMobileOrders && <MobileOrdersModal orders={mobileOrders} attendants={attendantsList} currencySymbol={currencySymbol} onAccept={handleAcceptMobileOrder} onEdit={setEditingMobileOrder} onAssignServer={(id, s) => {

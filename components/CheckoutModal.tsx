@@ -23,8 +23,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
   const matchedCustomers = useMemo(() => {
     if (!customerSearch.trim()) return [];
     const s = customerSearch.toLowerCase();
+    const sPhone = s.replace(/[^0-9+]/g, '');
     return customers.filter(c => 
-      c.phone.includes(s) || (c.name && c.name.toLowerCase().includes(s))
+      (sPhone && c.phone.includes(sPhone)) || (c.name && c.name.toLowerCase().includes(s))
     ).slice(0, 5);
   }, [customerSearch, customers]);
 
@@ -75,7 +76,16 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ total: initialTotal, onCl
   const handleComplete = () => {
     if (paidAmount >= total) {
       const totalDiscount = parsedManualDiscount + appliedCouponAmount;
-      onComplete(payments, selectedCustomer?.name || customerSearch, totalDiscount, selectedCustomer?.phone || (customerSearch.match(/^\d+$/) ? customerSearch : undefined), appliedCouponAmount);
+      const phoneMatch = customerSearch.match(/(\+?[\d\s\-\(\)]{7,})/);
+      const searchPhone = phoneMatch ? phoneMatch[0].replace(/[^0-9+]/g, '') : customerSearch.replace(/[^0-9+]/g, '');
+      const isPhone = searchPhone.length >= 7;
+      let name = customerSearch;
+      if (isPhone && phoneMatch) {
+        name = customerSearch.replace(phoneMatch[0], '').replace(/^[-:\s,]+|[-:\s,]+$/g, '').trim() || 'Walk-in';
+      } else if (isPhone) {
+        name = 'Walk-in';
+      }
+      onComplete(payments, selectedCustomer?.name || name, totalDiscount, selectedCustomer?.phone || (isPhone ? searchPhone : undefined), appliedCouponAmount);
     }
   };
 
