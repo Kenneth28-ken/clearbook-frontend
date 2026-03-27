@@ -16,7 +16,7 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
   const [showMasterBypass, setShowMasterBypass] = useState(false);
   const [masterPass, setMasterPass] = useState('');
 
-  const MASTER_KEY = "961996";
+  const MASTER_KEY = "9619";
 
   // Synthesized Startup Chime (Pleasant Harmonious Arpeggio)
   const playStartupSound = () => {

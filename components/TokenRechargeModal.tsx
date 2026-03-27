@@ -14,7 +14,7 @@ const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRech
   const [refillType, setRefillType] = useState<'SALES' | 'WHATSAPP'>('SALES');
   const [error, setError] = useState('');
 
-  const MASTER_KEY = "961996";
+  const MASTER_KEY = "9619";
   
   // Pricing: Sales = 200 per unit, WhatsApp = 100 per unit
   const unitPrice = refillType === 'SALES' ? 200 : 100;

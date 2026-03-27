@@ -47,7 +47,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
   const [expenseCategory, setExpenseCategory] = useState('');
   const [expenseDescription, setExpenseDescription] = useState('');
 
-  const MASTER_KEY = "961996";
+  const MASTER_KEY = "9619";
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
