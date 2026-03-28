@@ -799,12 +799,17 @@ const App: React.FC = () => {
   };
 
   const handleDeleteProduct = async (productId: string) => {
+    const productToRestore = products.find(p => p.id === productId);
     setProducts(prev => prev.filter(p => p.id !== productId));
     if (activeUid) {
       try {
         await db.collection("users").doc(activeUid).collection("products").doc(productId).delete();
       } catch (e) {
         console.error("Delete product sync failed", e);
+        alert("Failed to delete product: " + (e as Error).message);
+        if (productToRestore) {
+          setProducts(prev => [...prev, productToRestore]);
+        }
       }
     }
   };
