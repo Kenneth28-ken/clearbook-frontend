@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
 
-const CustomerDisplayView: React.FC = () => {
+interface Props {
+  isTerminalLocked: boolean;
+}
+
+const CustomerDisplayView: React.FC<Props> = ({ isTerminalLocked }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [advertisement, setAdvertisement] = useState('');
   const [currencySymbol, setCurrencySymbol] = useState('₦');
@@ -34,6 +38,17 @@ const CustomerDisplayView: React.FC = () => {
 
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const total = subtotal;
+
+  if (isTerminalLocked) {
+    return (
+      <div className="min-h-screen bg-red-900 text-white flex items-center justify-center font-sans">
+        <div className="text-center p-12 bg-red-950 rounded-3xl shadow-2xl">
+          <h1 className="text-6xl font-black mb-6">TERMINAL LOCKED</h1>
+          <p className="text-2xl font-bold text-red-200">Please contact staff for assistance.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex font-sans">

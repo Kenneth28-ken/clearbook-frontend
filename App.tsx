@@ -32,6 +32,7 @@ import EditMobileOrderModal from './components/EditMobileOrderModal';
 import MasterDashboardModal from './components/MasterDashboardModal';
 import ProfitHistoryModal from './components/ProfitHistoryModal';
 import ExpensesModal from './components/ExpensesModal';
+import CustomerDisplayView from './components/CustomerDisplayView';
 
 const MASTER_EMAIL = "perfectmaney200@gmail.com";
 const STOCK_THRESHOLD = 10;
@@ -1189,6 +1190,7 @@ const App: React.FC = () => {
   
   if (view === AppView.LOGIN) return <LoginScreen setSystemMode={setSystemMode} onPasswordRecovery={() => {}} />;
   if (view === AppView.STAFF_LOGIN) return <StaffLoginScreen staffList={staffList} onStaffAuthenticated={(s) => { setCurrentStaff(s); setView(AppView.SALES); }} onLogoutManager={handleLogout} />;
+  if (view === AppView.CUSTOMER_MENU) return <CustomerDisplayView isTerminalLocked={isTerminalLocked} />;
 
   if (accountStatus === 'SHUTDOWN' && !isMasterMode) {
     return (
