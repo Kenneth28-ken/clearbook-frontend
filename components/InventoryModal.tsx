@@ -11,6 +11,7 @@ interface InventoryModalProps {
   onEditProduct: (product: Product) => void;
   onUpdateProductField: (productId: string, field: keyof Product, value: any) => void;
   onAddNewProduct: () => void;
+  onDeleteProduct?: (id: string) => void;
   onClose: () => void;
   currencySymbol: string;
   isTerminalLocked?: boolean;
@@ -28,6 +29,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
   onEditProduct, 
   onUpdateProductField,
   onAddNewProduct,
+  onDeleteProduct,
   onClose, 
   currencySymbol,
   isTerminalLocked = false,
@@ -46,6 +48,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('');
   const [expenseDescription, setExpenseDescription] = useState('');
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
   const MASTER_KEY = "9619";
 
@@ -165,6 +168,35 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                     <button type="submit" className="flex-2 py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl uppercase text-[10px] tracking-widest">UNLOCK EDITING</button>
                   </div>
                </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Overlay */}
+        {productToDelete && (
+          <div className="absolute inset-0 bg-gray-900/95 z-[400] flex items-center justify-center p-6 backdrop-blur-md">
+            <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-md text-center animate-in zoom-in-95">
+               <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+               </div>
+               <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Delete Product</h2>
+               <p className="text-gray-500 font-bold text-sm mb-8 uppercase tracking-widest">This action cannot be undone.</p>
+               
+               <div className="flex gap-4">
+                 <button type="button" onClick={() => setProductToDelete(null)} className="flex-1 py-5 bg-gray-100 text-gray-500 font-black rounded-2xl uppercase text-[10px] tracking-widest">CANCEL</button>
+                 <button 
+                   type="button" 
+                   onClick={() => {
+                     if (onDeleteProduct) onDeleteProduct(productToDelete);
+                     setProductToDelete(null);
+                   }} 
+                   className="flex-2 py-5 bg-red-600 text-white font-black rounded-2xl shadow-xl uppercase text-[10px] tracking-widest"
+                 >
+                   DELETE PRODUCT
+                 </button>
+               </div>
             </div>
           </div>
         )}
@@ -308,9 +340,16 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                           </div>
                         </div>
                         {canEdit && (
-                          <button onClick={() => onEditProduct(product)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-blue-50 hover:text-blue-600">
-                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => onEditProduct(product)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-blue-50 hover:text-blue-600">
+                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                            {onDeleteProduct && (
+                              <button onClick={() => setProductToDelete(product.id)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-600">
+                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
 

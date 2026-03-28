@@ -798,6 +798,17 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteProduct = async (productId: string) => {
+    setProducts(prev => prev.filter(p => p.id !== productId));
+    if (activeUid) {
+      try {
+        await db.collection("users").doc(activeUid).collection("products").doc(productId).delete();
+      } catch (e) {
+        console.error("Delete product sync failed", e);
+      }
+    }
+  };
+
   const handleRemoveAttendant = async (id: string) => {
     setAttendantsList(prev => prev.filter(s => s.id !== id));
     if (activeUid) {
@@ -1353,7 +1364,7 @@ const App: React.FC = () => {
         couponRate={couponRate}
         onUpdateCouponRate={handleUpdateCouponRate}
       />}
-      {showInventory && <InventoryModal products={products} history={history} expenses={expenses} onAddExpense={handleAddExpense} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onClose={() => setShowInventory(false)} isMaster={isMasterMode} isManagerOverride={isManagerOverride} onSetManagerOverride={setIsManagerOverride} />}
+      {showInventory && <InventoryModal products={products} history={history} expenses={expenses} onAddExpense={handleAddExpense} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onDeleteProduct={handleDeleteProduct} onClose={() => setShowInventory(false)} isMaster={isMasterMode} isManagerOverride={isManagerOverride} onSetManagerOverride={setIsManagerOverride} />}
       {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} categories={categories} />}
       {editingProduct && <EditProductModal product={editingProduct} onUpdate={(p) => { handleUpdateProduct(p); setEditingProduct(null); }} onClose={() => setEditingProduct(null)} currencySymbol={currencySymbol} categories={categories} />}
       {showModifier && <ModifierModal product={showModifier} currencySymbol={currencySymbol} onConfirm={(mods) => { addToCart(showModifier, mods); setShowModifier(null); }} onClose={() => setShowModifier(null)} />}
