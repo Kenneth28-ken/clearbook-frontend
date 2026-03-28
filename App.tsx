@@ -433,7 +433,13 @@ const App: React.FC = () => {
           knownOrderIds.current.clear();
         }
       });
-    return () => { unsubConfig(); unsubStaff(); unsubAttendants(); unsubProducts(); unsubHistory(); unsubExpenses(); unsubCustomers(); unsubMobile(); };
+    const unsubStatus = db.collection("pos_accounts").doc(activeUid)
+      .onSnapshot((snap) => {
+        if (snap.exists) {
+          setAccountStatus(snap.data()?.status || 'ACTIVE');
+        }
+      });
+    return () => { unsubConfig(); unsubStaff(); unsubAttendants(); unsubProducts(); unsubHistory(); unsubExpenses(); unsubCustomers(); unsubMobile(); unsubStatus(); };
   }, [activeUid]);
 
   useEffect(() => {
