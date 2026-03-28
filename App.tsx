@@ -271,7 +271,7 @@ const App: React.FC = () => {
   }, [history]);
 
   const isMasterMode = useMemo(() => user?.email === MASTER_EMAIL, [user]);
-  const isTerminalLocked = tokens <= 0;
+  const isTerminalLocked = tokens <= 0 || (accountStatus === 'RESTRICTED' && !isMasterMode);
 
   const playAlertSound = () => {
     try {
@@ -822,6 +822,10 @@ const App: React.FC = () => {
   };
 
   const addToCart = (product: Product, modifiers: Modifier[] = [], weight?: number) => {
+    if (isTerminalLocked) {
+      alert("Terminal Locked or Account Restricted: Sales are disabled.");
+      return;
+    }
     const qty = weight || 1;
     const cartId = Math.random().toString(36).substr(2, 9);
     const newItem: CartItem = {
@@ -948,7 +952,7 @@ const App: React.FC = () => {
   const total = subtotal;
 
   const handleFinalizeSale = async (payments: PaymentRecord[], customerName?: string, discount: number = 0, customerPhone?: string, couponRedeemed: number = 0) => {
-    if (tokens <= 0) { alert("Terminal Locked: No Tokens Remaining"); return; }
+    if (isTerminalLocked) { alert("Terminal Locked or Account Restricted: Sales are disabled."); return; }
     const transactionId = Math.random().toString(36).substr(2, 5).toUpperCase();
     const now = new Date();
     
@@ -1253,7 +1257,7 @@ const App: React.FC = () => {
         systemMode={systemMode}
         tokens={tokens}
         whatsappTokens={whatsappTokens}
-        isTerminalLocked={isTerminalLocked || (accountStatus === 'RESTRICTED' && !isMasterMode)}
+        isTerminalLocked={isTerminalLocked}
         isOnline={isOnline}
         isSyncing={isSyncing}
         isMaster={isMasterMode}
