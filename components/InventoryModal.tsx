@@ -165,7 +165,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                   {error && <p className="text-red-600 font-black text-xs uppercase animate-pulse">{error}</p>}
                   <div className="flex gap-4">
                     <button type="button" onClick={() => setShowPassPrompt(false)} className="flex-1 py-5 bg-gray-100 text-gray-500 font-black rounded-2xl uppercase text-[10px] tracking-widest">CANCEL</button>
-                    <button type="submit" className="flex-2 py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl uppercase text-[10px] tracking-widest">UNLOCK EDITING</button>
+                    <button type="submit" className="flex-[2] py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl uppercase text-[10px] tracking-widest">UNLOCK EDITING</button>
                   </div>
                </form>
             </div>
@@ -185,14 +185,28 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                <p className="text-gray-500 font-bold text-sm mb-8 uppercase tracking-widest">This action cannot be undone.</p>
                
                <div className="flex gap-4">
-                 <button type="button" onClick={() => setProductToDelete(null)} className="flex-1 py-5 bg-gray-100 text-gray-500 font-black rounded-2xl uppercase text-[10px] tracking-widest">CANCEL</button>
                  <button 
                    type="button" 
-                   onClick={() => {
-                     if (onDeleteProduct) onDeleteProduct(productToDelete);
+                   onClick={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
                      setProductToDelete(null);
                    }} 
-                   className="flex-2 py-5 bg-red-600 text-white font-black rounded-2xl shadow-xl uppercase text-[10px] tracking-widest"
+                   className="flex-1 py-5 bg-gray-100 text-gray-500 font-black rounded-2xl uppercase text-[10px] tracking-widest"
+                 >
+                   CANCEL
+                 </button>
+                 <button 
+                   type="button" 
+                   onClick={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     if (onDeleteProduct && productToDelete) {
+                       onDeleteProduct(productToDelete);
+                     }
+                     setProductToDelete(null);
+                   }} 
+                   className="flex-[2] py-5 bg-red-600 text-white font-black rounded-2xl shadow-xl uppercase text-[10px] tracking-widest"
                  >
                    DELETE PRODUCT
                  </button>
@@ -342,11 +356,19 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                         {canEdit && (
                           <div className="flex items-center gap-1">
                             <button onClick={() => onEditProduct(product)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-blue-50 hover:text-blue-600">
-                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                               <svg className="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
                             {onDeleteProduct && (
-                              <button onClick={() => setProductToDelete(product.id)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-600">
-                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setProductToDelete(product.id);
+                                }} 
+                                className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-600"
+                              >
+                                 <svg className="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                               </button>
                             )}
                           </div>
