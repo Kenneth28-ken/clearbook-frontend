@@ -36,7 +36,6 @@ import CustomerDisplayView from './components/CustomerDisplayView';
 
 const MASTER_EMAIL = "perfectmaney200@gmail.com";
 const STOCK_THRESHOLD = 10;
-const DEFAULT_WEBHOOK = "https://valaq122.app.n8n.cloud/webhook/vis";
 
 const sanitize = (obj: any) => {
   const result: any = {};
@@ -69,7 +68,43 @@ const safeJsonStringify = (obj: any) => {
         return value;
       };
     };
-    return JSON.stringify(obj, getCircularReplacer());
+    try {
+      return JSON.stringify(obj, getCircularReplacer());
+    } catch (err) {
+      console.warn("safeJsonStringify fallback failed:", err);
+      return Array.isArray(obj) ? "[]" : "{}";
+    }
+  }
+};
+
+const sendPurchaseWebhook = async (
+  transactionId: string,
+  customerPhone: string,
+  customerName: string,
+  visitCount: number,
+  couponBalance: number
+) => {
+  const webhookUrl = "http://167.86.88.118:5678/webhook/purchase-event";
+  const payload = {
+    event_id: `purchase_${transactionId}_${Date.now()}`,
+    transaction_id: transactionId,
+    customerId: customerPhone,
+    customerName: customerName || "Walk-in",
+    phone: customerPhone,
+    purchaseCount: visitCount,
+    couponBalance: Math.max(0, couponBalance)
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const text = await response.text();
+    console.log(`Purchase webhook status: ${response.status}`, text);
+  } catch (err) {
+    console.error("Purchase webhook failed:", err);
   }
 };
 
@@ -197,7 +232,7 @@ const App: React.FC = () => {
   });
 
   const [currencySymbol, setCurrencySymbol] = useState(() => localStorage.getItem('cb_currency') || '₦');
-  const [whatsappApi, setWhatsappApi] = useState(() => localStorage.getItem('cb_wa_api') || DEFAULT_WEBHOOK);
+  const [whatsappApi, setWhatsappApi] = useState(() => localStorage.getItem('cb_wa_api') || '');
   const [whatsappMethod, setWhatsappMethod] = useState<'POST' | 'GET'>(() => (localStorage.getItem('cb_wa_method') as 'POST' | 'GET') || 'POST');
   const [whatsappCompatibilityMode, setWhatsappCompatibilityMode] = useState<boolean>(() => localStorage.getItem('cb_wa_compat') === 'true');
   const [thermalProxy, setThermalProxy] = useState(() => localStorage.getItem('cb_thermal_proxy') || '');
@@ -1014,6 +1049,20 @@ const App: React.FC = () => {
     // Update customer balance if phone is provided
     if (customerPhone) {
       handleSaveCustomer(customerPhone, customerName || '', transactionId, couponEarned, couponRedeemed);
+      
+      // Calculate updated values for webhook
+      const existingCustomer = customers.find(c => c.phone === customerPhone);
+      const nextVisitCount = (existingCustomer?.visitCount || 0) + 1;
+      const nextCouponBalance = Math.max(0, (existingCustomer?.couponBalance || 0) + couponEarned - couponRedeemed);
+      
+      // Send webhook asynchronously (fire and forget)
+      sendPurchaseWebhook(
+        transactionId,
+        customerPhone,
+        customerName || existingCustomer?.name || '',
+        nextVisitCount,
+        nextCouponBalance
+      );
     }
     
     if (activeUid) {
@@ -1380,6 +1429,7 @@ const App: React.FC = () => {
         onUpdateCategories={handleUpdateCategories}
         couponRate={couponRate}
         onUpdateCouponRate={handleUpdateCouponRate}
+        activeUid={activeUid}
       />}
       {showInventory && <InventoryModal products={products} history={history} expenses={expenses} onAddExpense={handleAddExpense} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onDeleteProduct={handleDeleteProduct} onClose={() => setShowInventory(false)} isMaster={isMasterMode} isManagerOverride={isManagerOverride} onSetManagerOverride={setIsManagerOverride} />}
       {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} categories={categories} />}

@@ -33,6 +33,7 @@ interface SettingsModalProps {
   onUpdateCategories: (categories: string[]) => void;
   couponRate: number;
   onUpdateCouponRate: (rate: number) => void;
+  activeUid: string;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -65,7 +66,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   categories,
   onUpdateCategories,
   couponRate,
-  onUpdateCouponRate
+  onUpdateCouponRate,
+  activeUid
 }) => {
   const [newPass, setNewPass] = useState('');
   const [isTesting, setIsTesting] = useState(false);
@@ -277,16 +279,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="p-10 space-y-10 overflow-y-auto custom-scrollbar bg-gray-50/50">
           <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
              <div className="flex items-center gap-3 mb-3">
-               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Business Name</h3>
-               <p className="text-xs font-bold text-gray-400 uppercase">Appears on receipts.</p>
+               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Product User ID</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase">Used for database access.</p>
              </div>
-             <input 
-               type="text"
-               className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500 transition-colors text-gray-900 uppercase"
-               value={businessName}
-               onChange={(e) => onSetBusinessName(e.target.value)}
-               placeholder="ENTER BUSINESS NAME..."
-             />
+             <div className="w-full p-4 bg-gray-100 border-2 border-gray-200 rounded-xl font-mono text-sm text-gray-700 select-all">
+               {activeUid}
+             </div>
           </div>
 
           <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">

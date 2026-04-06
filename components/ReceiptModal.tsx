@@ -183,11 +183,17 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
     }
 
     try {
+      const customer = customers.find(c => c.phone === phone);
+      const eventId = `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const payload = JSON.stringify({
+        event_id: eventId,
         action: "thank_you_message",
-        id: transaction.id,
+        transaction_id: transaction.id,
         customerName: name,
         phone: phone,
+        customerId: phone,
+        purchaseCount: customer ? customer.visitCount : 0,
+        couponBalance: customer ? customer.couponBalance : 0,
       });
 
       const response = await fetch(whatsappApi!.trim(), {
