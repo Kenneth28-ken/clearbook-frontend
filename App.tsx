@@ -88,7 +88,6 @@ const sendPurchaseWebhook = async (
   const payload = {
     event_id: `purchase_${transactionId}_${Date.now()}`,
     transaction_id: transactionId,
-    customerId: customerPhone,
     customerName: customerName || "Walk-in",
     phone: customerPhone,
     purchaseCount: visitCount,
@@ -232,7 +231,13 @@ const App: React.FC = () => {
   });
 
   const [currencySymbol, setCurrencySymbol] = useState(() => localStorage.getItem('cb_currency') || '₦');
-  const [whatsappApi, setWhatsappApi] = useState(() => localStorage.getItem('cb_wa_api') || '');
+  const [whatsappApi, setWhatsappApi] = useState(() => {
+  const saved = localStorage.getItem('cb_wa_api');
+  if (saved === 'https://valaq122.app.n8n.cloud/webhook/vis') {
+    return '/.netlify/functions/triggerPurchase';
+  }
+  return saved || '/.netlify/functions/triggerPurchase';
+});
   const [whatsappMethod, setWhatsappMethod] = useState<'POST' | 'GET'>(() => (localStorage.getItem('cb_wa_method') as 'POST' | 'GET') || 'POST');
   const [whatsappCompatibilityMode, setWhatsappCompatibilityMode] = useState<boolean>(() => localStorage.getItem('cb_wa_compat') === 'true');
   const [thermalProxy, setThermalProxy] = useState(() => localStorage.getItem('cb_thermal_proxy') || '');

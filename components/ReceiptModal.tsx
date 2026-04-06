@@ -183,6 +183,11 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
     }
 
     try {
+      if (window.location.protocol === 'https:' && whatsappApi!.trim().startsWith('http://')) {
+        alert("Security Error: Your browser blocks sending data from a secure site (HTTPS) to an insecure webhook (HTTP). Please update your webhook to use HTTPS.");
+        return;
+      }
+
       const customer = customers.find(c => c.phone === phone);
       const eventId = `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const payload = JSON.stringify({
@@ -191,7 +196,6 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
         transaction_id: transaction.id,
         customerName: name,
         phone: phone,
-        customerId: phone,
         purchaseCount: customer ? customer.visitCount : 0,
         couponBalance: customer ? customer.couponBalance : 0,
       });
