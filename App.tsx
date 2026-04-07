@@ -84,7 +84,7 @@ const sendPurchaseWebhook = async (
   visitCount: number,
   couponBalance: number
 ) => {
-  const webhookUrl = "http://167.86.88.118:5678/webhook/purchase-event";
+  const webhookUrl = "/.netlify/functions/triggerPurchase";
   const payload = {
     event_id: `purchase_${transactionId}_${Date.now()}`,
     transaction_id: transactionId,

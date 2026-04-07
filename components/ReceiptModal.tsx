@@ -175,7 +175,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
   };
 
   const executePosDelivery = async (name: string, phone: string) => {
-    const isWebhook = whatsappApi && whatsappApi.startsWith('http');
+    const isWebhook = whatsappApi && (whatsappApi.startsWith('http') || whatsappApi.startsWith('/'));
     if (!isWebhook) {
       triggerDirectWhatsApp(name, phone);
       if (onDeductToken) onDeductToken();
