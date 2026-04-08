@@ -15,17 +15,23 @@ export const handler = async (event, context) => {
 
   try {
     const payload = JSON.parse(event.body);
+    console.log("Received body in Netlify function:", payload);
     
+    const forwardedBody = JSON.stringify(payload);
+    console.log("Forwarded body to n8n:", forwardedBody);
+
     // Forward the request to your n8n webhook
     const response = await fetch("http://167.86.88.118:5678/webhook/purchase-event", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload)
+      body: forwardedBody
     });
 
     const data = await response.text();
+    console.log("n8n response status:", response.status);
+    console.log("n8n response text:", data);
 
     return {
       statusCode: response.status,
