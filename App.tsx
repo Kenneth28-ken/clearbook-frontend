@@ -84,6 +84,7 @@ const sendPurchaseWebhook = async (
   visitCount: number,
   totalPurchase: number
 ) => {
+  console.log("Webhook totalPurchase value:", totalPurchase);
   const webhookUrl = "/.netlify/functions/triggerPurchase";
   const payload = {
     event_id: `purchase_${transactionId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -92,7 +93,7 @@ const sendPurchaseWebhook = async (
     customerName: customerName || "Walk-in",
     phone: customerPhone,
     purchaseCount: visitCount,
-    totalPurchase: totalPurchase
+    totalPurchase: Number(totalPurchase || 0)
   };
 
   console.log("Sending purchase webhook payload:", payload);
@@ -1065,6 +1066,7 @@ const App: React.FC = () => {
       const nextVisitCount = (existingCustomer?.visitCount || 0) + 1;
       const nextCouponBalance = Math.max(0, (existingCustomer?.couponBalance || 0) + couponEarned - couponRedeemed);
       
+      console.log("FINAL TOTAL BEFORE WEBHOOK:", finalTotal);
       console.log("Initiating purchase webhook call...");
       const webhookResult = await sendPurchaseWebhook(
         transactionId,
