@@ -76,7 +76,7 @@ const safeJsonStringify = (obj: any) => {
     }
   }
 };
-console.log("FINAL TOTAL BEFORE WEBHOOK:", finalTotal);
+
 const sendPurchaseWebhook = async (
   transactionId: string,
   customerPhone: string,
