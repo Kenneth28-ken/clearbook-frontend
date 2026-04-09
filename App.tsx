@@ -1064,10 +1064,9 @@ const App: React.FC = () => {
       // Calculate updated values for webhook
       const existingCustomer = customers.find(c => c.phone === customerPhone);
       const nextVisitCount = (existingCustomer?.visitCount || 0) + 1;
-      const nextCouponBalance = Math.max(0, (existingCustomer?.couponBalance || 0) + couponEarned - couponRedeemed);
       
       console.log("FINAL TOTAL BEFORE WEBHOOK:", finalTotal);
-      console.log("Initiating purchase webhook call...");
+
       const webhookResult = await sendPurchaseWebhook(
         transactionId,
         customerPhone,
@@ -1075,6 +1074,7 @@ const App: React.FC = () => {
         nextVisitCount,
         finalTotal
       );
+
       console.log("Purchase webhook call completed with result:", webhookResult);
     }
     
