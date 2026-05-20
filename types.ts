@@ -123,6 +123,12 @@ export enum AuditType {
   TRANSACTION = 'TRANSACTION'
 }
 
+export enum MenuTheme {
+  WHITE = 'WHITE',
+  PASTEL = 'PASTEL',
+  VIBRANT = 'VIBRANT',
+}
+
 export interface AuditCheckpoint {
   id: string;
   type: AuditType;

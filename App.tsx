@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { auth, db, firebase } from './firebase';
 import PrismaticAuditModal from './components/PrismaticAuditModal';
-import { AppView, CartItem, Product, Staff, ItemType, Modifier, PaymentRecord, TransactionRecord, Attendant, MobileOrder, SystemMode, Customer, AuditCheckpoint, AuditType, Expense } from './types';
+import { AppView, CartItem, Product, Staff, ItemType, Modifier, PaymentRecord, TransactionRecord, Attendant, MobileOrder, SystemMode, Customer, AuditCheckpoint, AuditType, Expense, MenuTheme } from './types';
 import { MOCK_PRODUCTS as INITIAL_PRODUCTS, CATEGORIES, SERVER_LIST, STAFF_LIST } from './constants';
 
 // Components
@@ -136,6 +136,10 @@ const App: React.FC = () => {
   const [currentStaff, setCurrentStaff] = useState<Staff | null>(null);
   const [currentServer, setCurrentServer] = useState<Attendant | null>(null);
   
+  const [menuTheme, setMenuTheme] = useState<MenuTheme>(() => {
+    return (localStorage.getItem('cb_menu_theme') as MenuTheme) || MenuTheme.PASTEL;
+  });
+
   const [staffList, setStaffList] = useState<Staff[]>(() => {
     const saved = localStorage.getItem('cb_staff');
     return saved ? JSON.parse(saved) : STAFF_LIST;
@@ -379,6 +383,7 @@ const App: React.FC = () => {
       localStorage.setItem('cb_business_address', businessAddress);
       localStorage.setItem('cb_business_phone', businessPhone);
       localStorage.setItem('cb_expenses', safeJsonStringify(expenses));
+      localStorage.setItem('cb_menu_theme', menuTheme);
     } catch (e) {
       console.error("Failed to save state to localStorage:", e);
     }
@@ -393,11 +398,13 @@ const App: React.FC = () => {
             setWhatsappTokens(doc.data()?.whatsappTokens || 0);
             if (doc.data()?.couponRate !== undefined) setCouponRate(doc.data()?.couponRate);
             if (doc.data()?.categories) setCategories(doc.data()?.categories);
+            if (doc.data()?.menuTheme) setMenuTheme(doc.data()?.menuTheme as MenuTheme);
         } else {
             setTokens(0);
             setWhatsappTokens(0);
             setCouponRate(5);
             setCategories(CATEGORIES);
+            setMenuTheme(MenuTheme.PASTEL);
         }
       });
     const unsubStaff = db.collection("users").doc(activeUid).collection("staff")
@@ -1247,6 +1254,14 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateMenuTheme = (theme: MenuTheme) => {
+    setMenuTheme(theme);
+    if (activeUid) {
+      db.collection("users").doc(activeUid).collection("config").doc("terminal")
+        .set({ menuTheme: theme }, { merge: true });
+    }
+  };
+
   const handleUpdateCategories = async (newCategories: string[]) => {
     setCategories(newCategories);
     if (activeUid) {
@@ -1376,6 +1391,7 @@ const App: React.FC = () => {
               category={selectedCategory}
               search={search}
               currencySymbol={currencySymbol}
+              menuTheme={menuTheme}
               onSelect={(p) => {
                 if (p.modifiers) setShowModifier(p);
                 else if (p.type === ItemType.WEIGHT) setShowWeight(p);
@@ -1452,6 +1468,9 @@ const App: React.FC = () => {
         couponRate={couponRate}
         onUpdateCouponRate={handleUpdateCouponRate}
         activeUid={activeUid}
+        menuTheme={menuTheme}
+        onSetMenuTheme={handleUpdateMenuTheme}
+        isMaster={isMasterMode}
       />}
       {showInventory && <InventoryModal products={products} history={history} expenses={expenses} onAddExpense={handleAddExpense} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onDeleteProduct={handleDeleteProduct} onClose={() => setShowInventory(false)} isMaster={isMasterMode} isManagerOverride={isManagerOverride} onSetManagerOverride={setIsManagerOverride} />}
       {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} categories={categories} />}
@@ -1486,7 +1505,7 @@ const App: React.FC = () => {
       {showTokenRecharge && <TokenRechargeModal onRecharge={handleTokenRecharge} onClose={() => setShowTokenRecharge(false)} currencySymbol={currencySymbol} />}
       {showCRM && <CRMModal customers={customers} onClose={() => setShowCRM(false)} whatsappTokens={whatsappTokens} onUpdateName={(p, n) => handleSaveCustomer(p, n)} onImportCustomers={handleImportCustomers} />}
       {showStaffManagement && <StaffManagementModal staffList={staffList} attendantsList={attendantsList} onClose={() => setShowStaffManagement(false)} onUpdateStaff={handleUpdateStaff} onAddStaff={handleAddStaff} onRemoveStaff={handleRemoveStaff} onUpdateAttendant={handleUpdateAttendant} onAddAttendant={handleAddAttendant} onRemoveAttendant={handleRemoveAttendant} />}
-      {showQRCode && <QRCodeModal onClose={() => setShowQRCode(false)} />}
+      {showQRCode && <QRCodeModal onClose={() => setShowQRCode(false)} activeUid={activeUid} />}
       {showMobileOrders && <MobileOrdersModal orders={mobileOrders} attendants={attendantsList} currencySymbol={currencySymbol} onAccept={handleAcceptMobileOrder} onEdit={setEditingMobileOrder} onAssignServer={(id, s) => {
          setMobileOrders(prev => prev.map(o => o.id === id ? { ...o, assignedServerId: s } : o));
          if (activeUid) db.collection("users").doc(activeUid).collection("mobile_orders").doc(id).update(sanitize({ assignedServerId: s }));

@@ -1,6 +1,9 @@
 
 import React, { useState, useRef } from 'react';
 import MigrationModal from './MigrationModal';
+import { MenuTheme } from '../types';
+import { QRCodeSVG } from 'qrcode.react';
+import { Smartphone, Download, QrCode } from 'lucide-react';
 
 interface SettingsModalProps {
   currencySymbol: string;
@@ -34,6 +37,9 @@ interface SettingsModalProps {
   couponRate: number;
   onUpdateCouponRate: (rate: number) => void;
   activeUid: string;
+  menuTheme?: MenuTheme;
+  onSetMenuTheme: (theme: MenuTheme) => void;
+  isMaster?: boolean;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -67,7 +73,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onUpdateCategories,
   couponRate,
   onUpdateCouponRate,
-  activeUid
+  activeUid,
+  menuTheme = MenuTheme.PASTEL,
+  onSetMenuTheme,
+  isMaster = false
 }) => {
   const [newPass, setNewPass] = useState('');
   const [isTesting, setIsTesting] = useState(false);
@@ -279,11 +288,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="p-10 space-y-10 overflow-y-auto custom-scrollbar bg-gray-50/50">
           <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
              <div className="flex items-center gap-3 mb-3">
-               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Product User ID</h3>
-               <p className="text-xs font-bold text-gray-400 uppercase">Used for database access.</p>
+               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Business Name</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase">Appears on receipts.</p>
              </div>
-             <div className="w-full p-4 bg-gray-100 border-2 border-gray-200 rounded-xl font-mono text-sm text-gray-700 select-all">
-               {activeUid}
+             <input 
+               type="text"
+               className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500 transition-colors text-gray-900 uppercase"
+               value={businessName}
+               onChange={(e) => onSetBusinessName(e.target.value)}
+               placeholder="ENTER BUSINESS NAME..."
+             />
+             <div className="mt-4 pt-4 border-t border-gray-50">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Product User ID (Database Access)</p>
+                <div className="w-full p-3 bg-gray-100/50 rounded-lg font-mono text-[10px] text-gray-500 select-all border border-gray-200">
+                  {activeUid}
+                </div>
              </div>
           </div>
 
@@ -313,6 +332,66 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                onChange={(e) => onSetBusinessPhone(e.target.value)}
                placeholder="ENTER BUSINESS PHONE..."
              />
+          </div>
+
+          <div className="p-6 rounded-3xl border-2 border-indigo-100 bg-indigo-50/30">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-indigo-600 text-white rounded-xl">
+                <QrCode className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Digital Menu QR</h3>
+                <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Global Customer Access</p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center gap-6">
+               <div className="p-4 bg-white rounded-3xl shadow-xl border-4 border-white">
+                  <QRCodeSVG 
+                    value={`${window.location.origin}/menu/${activeUid}`}
+                    size={160}
+                    level="H"
+                  />
+               </div>
+               
+               <div className="w-full space-y-3">
+                  <div className="bg-white/60 p-4 rounded-2xl border border-indigo-100 flex items-center gap-3">
+                    <Smartphone className="w-5 h-5 text-indigo-600" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black text-gray-900 uppercase">One-Scan Ordering</p>
+                      <p className="text-[9px] text-gray-500 truncate">{window.location.origin}/menu/{activeUid}</p>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={() => {
+                      const svg = document.querySelector('.p-4.bg-white svg');
+                      if (svg) {
+                        const svgData = new XMLSerializer().serializeToString(svg);
+                        const canvas = document.createElement("canvas");
+                        const svgSize = svg.getBoundingClientRect();
+                        canvas.width = svgSize.width * 2;
+                        canvas.height = svgSize.height * 2;
+                        const ctx = canvas.getContext("2d");
+                        const img = new Image();
+                        img.onload = () => {
+                          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                          const pngFile = canvas.toDataURL("image/png");
+                          const downloadLink = document.createElement("a");
+                          downloadLink.download = "QR_Menu.png";
+                          downloadLink.href = pngFile;
+                          downloadLink.click();
+                        };
+                        img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                      }
+                    }}
+                    className="w-full py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all active:scale-95 shadow-md"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download PNG
+                  </button>
+               </div>
+            </div>
           </div>
 
           <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
@@ -382,6 +461,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
              </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block text-center">Menu Style (Theme)</label>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { id: MenuTheme.WHITE, label: 'Plain', color: 'bg-white' },
+                { id: MenuTheme.PASTEL, label: 'Pastel', color: 'bg-blue-50' },
+                { id: MenuTheme.VIBRANT, label: 'Vibrant', color: 'bg-blue-100' },
+              ].map(theme => (
+                <button 
+                  key={theme.id}
+                  onClick={() => onSetMenuTheme(theme.id as MenuTheme)}
+                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all active:scale-95 ${menuTheme === theme.id ? 'border-blue-600 bg-white shadow-md' : 'border-gray-100 bg-white hover:border-gray-300'}`}
+                >
+                  <div className={`w-full h-8 ${theme.color} rounded-lg border border-gray-100`}></div>
+                  <span className={`text-[10px] font-black uppercase tracking-tight ${menuTheme === theme.id ? 'text-blue-600' : 'text-gray-500'}`}>{theme.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
