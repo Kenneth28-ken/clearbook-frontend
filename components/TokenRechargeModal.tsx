@@ -14,7 +14,7 @@ const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRech
   const [refillType, setRefillType] = useState<'SALES' | 'WHATSAPP'>('SALES');
   const [error, setError] = useState('');
 
-  const MASTER_KEY = "9619";
+  const MASTER_KEY = import.meta.env.VITE_MASTER_KEY;
   
   // Pricing: Sales = 200 per unit, WhatsApp = 100 per unit
   const unitPrice = refillType === 'SALES' ? 200 : 100;
@@ -22,11 +22,11 @@ const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRech
 
   const handleAuthorize = (e: React.FormEvent) => {
     e.preventDefault();
-    if (masterKey.trim().toLowerCase() === MASTER_KEY.toLowerCase()) {
+    if (MASTER_KEY && masterKey.trim().toLowerCase() === MASTER_KEY.toLowerCase()) {
       setIsAuthorized(true);
       setError('');
     } else {
-      setError('Invalid Authorization Key');
+      setError('Invalid Authorization Key or Security Config Missing');
       setMasterKey('');
     }
   };

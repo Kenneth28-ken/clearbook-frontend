@@ -21,7 +21,11 @@ export const handler = async (event, context) => {
     console.log("Forwarded body to n8n:", forwardedBody);
 
     // Forward the request to your n8n webhook
-    const response = await fetch("http://167.86.88.118:5678/webhook/purchase-event", {
+    const n8nUrl = process.env.N8N_WEBHOOK_URL;
+    if (!n8nUrl) {
+      throw new Error("N8N_WEBHOOK_URL environment variable is not defined");
+    }
+    const response = await fetch(n8nUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

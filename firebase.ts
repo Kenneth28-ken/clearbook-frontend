@@ -4,12 +4,12 @@ import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAuMURKtwOabd9kLojctj26t0I3BK6xce8",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "clearbook-7b201.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "clearbook-7b201",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "clearbook-7b201.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "916165177766",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:916165177766:web:6e0070d31c5545ef14df67"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase using compat API

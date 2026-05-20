@@ -34,7 +34,7 @@ import ProfitHistoryModal from './components/ProfitHistoryModal';
 import ExpensesModal from './components/ExpensesModal';
 import CustomerDisplayView from './components/CustomerDisplayView';
 
-const MASTER_EMAIL = "perfectmaney200@gmail.com";
+const MASTER_EMAIL = import.meta.env.VITE_MASTER_EMAIL;
 const STOCK_THRESHOLD = 10;
 
 const parseDate = (dateVal: any): Date => {
