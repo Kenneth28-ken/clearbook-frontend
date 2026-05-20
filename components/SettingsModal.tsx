@@ -156,20 +156,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       }
     }
     
-    const getCircularReplacer = () => {
+    const safeJsonStringify = (data: any) => {
       const seen = new WeakSet();
-      return (key: string, value: any) => {
+      return JSON.stringify(data, (key, value) => {
         if (typeof value === "object" && value !== null) {
-          if (seen.has(value)) {
-            return;
-          }
+          if (seen.has(value)) return;
           seen.add(value);
         }
         return value;
-      };
+      }, 2);
     };
     
-    const safeString = JSON.stringify(backupData, getCircularReplacer(), 2);
+    const safeString = safeJsonStringify(backupData);
     
     const blob = new Blob([safeString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

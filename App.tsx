@@ -37,14 +37,6 @@ import CustomerDisplayView from './components/CustomerDisplayView';
 const MASTER_EMAIL = "perfectmaney200@gmail.com";
 const STOCK_THRESHOLD = 10;
 
-const sanitize = (obj: any) => {
-  const result: any = {};
-  Object.keys(obj).forEach((key) => {
-    result[key] = obj[key] === undefined ? null : obj[key];
-  });
-  return result;
-};
-
 const parseDate = (dateVal: any): Date => {
   if (!dateVal) return new Date();
   if (typeof dateVal.toDate === 'function') return dateVal.toDate();
@@ -53,27 +45,31 @@ const parseDate = (dateVal: any): Date => {
 };
 
 const safeJsonStringify = (obj: any) => {
-  try {
-    return JSON.stringify(obj);
-  } catch (e) {
-    const getCircularReplacer = () => {
-      const seen = new WeakSet();
-      return (key: string, value: any) => {
-        if (typeof value === "object" && value !== null) {
-          if (seen.has(value)) {
-            return;
-          }
-          seen.add(value);
-        }
-        return value;
-      };
+  const getCircularReplacer = () => {
+    const seen = new WeakSet();
+    return (key: string, value: any) => {
+      if (typeof value === "object" && value !== null) {
+        if (seen.has(value)) return;
+        seen.add(value);
+      }
+      return value;
     };
-    try {
-      return JSON.stringify(obj, getCircularReplacer());
-    } catch (err) {
-      console.warn("safeJsonStringify fallback failed:", err);
-      return Array.isArray(obj) ? "[]" : "{}";
-    }
+  };
+  try {
+    return JSON.stringify(obj, getCircularReplacer());
+  } catch (e) {
+    console.warn("safeJsonStringify failed:", e);
+    return "{}";
+  }
+};
+
+const sanitize = (obj: any) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  try {
+    return JSON.parse(safeJsonStringify(obj));
+  } catch (e) {
+    console.error("Sanitize failed:", e);
+    return {};
   }
 };
 

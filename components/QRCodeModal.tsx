@@ -46,8 +46,6 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ onClose, activeUid }) => {
                 includeMargin={false}
                 imageSettings={{
                   src: "/favicon.ico", // or a branded icon if available
-                  x: undefined,
-                  y: undefined,
                   height: 48,
                   width: 48,
                   excavate: true,
