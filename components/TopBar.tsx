@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Staff, SystemMode } from '../types';
+import { QrCode } from 'lucide-react';
 
 interface TopBarProps {
   staff: Staff | null;
@@ -85,11 +86,9 @@ const TopBar: React.FC<TopBarProps> = ({
             <span className="text-[10px] font-black uppercase hidden lg:inline">CRM</span>
           </button>
 
-          <button onClick={onOpenQRCode} className={`p-2.5 rounded-xl flex items-center gap-2 transition-all bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white shadow-sm animate-in zoom-in`} title="Digital Menu QR">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v1m0 11v1m4-8h1m-11 0h1m2-2h5a2 2 0 012 2v5a2 2 0 01-2 2h-5a2 2 0 01-2-2v-5a2 2 0 012-2zm-2 9v2m11-11h2m-2 11h2m-11-11V5a2 2 0 012-2h5a2 2 0 012 2v2m-9 11v2a2 2 0 002 2h5a2 2 0 002-2v-2" />
-            </svg>
-            <span className="text-[10px] font-black uppercase hidden lg:inline">Digital Menu</span>
+          <button onClick={onOpenQRCode} className="p-2.5 bg-amber-500 rounded-xl text-amber-950 flex items-center gap-2 hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 active:scale-95 animate-pulse" title="Generate Digital Menu QR">
+            <QrCode className="w-5 h-5 shrink-0" />
+            <span className="text-[10px] font-black uppercase whitespace-nowrap">Get QR Code</span>
           </button>
 
           {!isTerminalLocked && systemMode === SystemMode.RESTAURANT && (

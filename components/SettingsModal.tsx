@@ -284,6 +284,66 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div className="p-10 space-y-10 overflow-y-auto custom-scrollbar bg-gray-50/50">
+          <div className="p-6 rounded-3xl border-4 border-amber-200 bg-amber-50">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-amber-500 text-white rounded-2xl shadow-lg ring-4 ring-amber-100">
+                <QrCode className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-amber-950 uppercase tracking-tight">Digital Menu QR</h3>
+                <p className="text-[11px] font-bold text-amber-700 uppercase tracking-widest">Share with customers for online menu</p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center gap-6">
+               <div className="p-4 bg-white rounded-[2rem] shadow-2xl border-4 border-white shrink-0">
+                  <QRCodeSVG 
+                    value={`${window.location.origin}/menu/${activeUid}`}
+                    size={160}
+                    level="H"
+                  />
+               </div>
+               
+               <div className="w-full space-y-3">
+                  <div className="bg-white p-3 rounded-2xl border-2 border-amber-100 flex items-center gap-3">
+                    <Smartphone className="w-5 h-5 text-amber-600" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black text-amber-900 uppercase">Live Menu Link</p>
+                      <p className="text-[10px] text-amber-800 font-mono truncate">{window.location.origin}/menu/{activeUid}</p>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={() => {
+                      const svg = document.querySelector('.bg-white.rounded-\\[2rem\\] svg');
+                      if (svg) {
+                        const svgData = new XMLSerializer().serializeToString(svg);
+                        const canvas = document.createElement("canvas");
+                        const svgSize = svg.getBoundingClientRect();
+                        canvas.width = svgSize.width * 2;
+                        canvas.height = svgSize.height * 2;
+                        const ctx = canvas.getContext("2d");
+                        const img = new Image();
+                        img.onload = () => {
+                          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                          const pngFile = canvas.toDataURL("image/png");
+                          const downloadLink = document.createElement("a");
+                          downloadLink.download = "QR_Menu.png";
+                          downloadLink.href = pngFile;
+                          downloadLink.click();
+                        };
+                        img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                      }
+                    }}
+                    className="w-full py-3 bg-amber-600 text-white rounded-xl text-[11px] font-black uppercase flex items-center justify-center gap-2 hover:bg-amber-700 transition-all active:scale-95 shadow-xl shadow-amber-900/20"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download QR (PNG)
+                  </button>
+               </div>
+            </div>
+          </div>
+
           <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
              <div className="flex items-center gap-3 mb-3">
                <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Business Name</h3>
@@ -330,66 +390,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                onChange={(e) => onSetBusinessPhone(e.target.value)}
                placeholder="ENTER BUSINESS PHONE..."
              />
-          </div>
-
-          <div className="p-6 rounded-3xl border-2 border-indigo-100 bg-indigo-50/30">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-indigo-600 text-white rounded-xl">
-                <QrCode className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Digital Menu QR</h3>
-                <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Global Customer Access</p>
-              </div>
-            </div>
-            
-            <div className="flex flex-col items-center gap-6">
-               <div className="p-4 bg-white rounded-3xl shadow-xl border-4 border-white">
-                  <QRCodeSVG 
-                    value={`${window.location.origin}/menu/${activeUid}`}
-                    size={160}
-                    level="H"
-                  />
-               </div>
-               
-               <div className="w-full space-y-3">
-                  <div className="bg-white/60 p-4 rounded-2xl border border-indigo-100 flex items-center gap-3">
-                    <Smartphone className="w-5 h-5 text-indigo-600" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-black text-gray-900 uppercase">One-Scan Ordering</p>
-                      <p className="text-[9px] text-gray-500 truncate">{window.location.origin}/menu/{activeUid}</p>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => {
-                      const svg = document.querySelector('.p-4.bg-white svg');
-                      if (svg) {
-                        const svgData = new XMLSerializer().serializeToString(svg);
-                        const canvas = document.createElement("canvas");
-                        const svgSize = svg.getBoundingClientRect();
-                        canvas.width = svgSize.width * 2;
-                        canvas.height = svgSize.height * 2;
-                        const ctx = canvas.getContext("2d");
-                        const img = new Image();
-                        img.onload = () => {
-                          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                          const pngFile = canvas.toDataURL("image/png");
-                          const downloadLink = document.createElement("a");
-                          downloadLink.download = "QR_Menu.png";
-                          downloadLink.href = pngFile;
-                          downloadLink.click();
-                        };
-                        img.src = "data:image/svg+xml;base64," + btoa(svgData);
-                      }
-                    }}
-                    className="w-full py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all active:scale-95 shadow-md"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download PNG
-                  </button>
-               </div>
-            </div>
           </div>
 
           <div className="p-6 rounded-2xl border-2 border-gray-100 bg-white">
