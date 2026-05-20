@@ -50,7 +50,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
   const [expenseDescription, setExpenseDescription] = useState('');
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
-  const MASTER_KEY = "9619";
+  const MASTER_KEY = import.meta.env.VITE_MASTER_KEY;
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
