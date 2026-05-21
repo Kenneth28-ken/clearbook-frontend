@@ -12,6 +12,15 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Log warning if config is missing (but don't expose secrets)
+const missingKeys = Object.entries(firebaseConfig)
+  .filter(([_, value]) => !value)
+  .map(([key]) => key);
+
+if (missingKeys.length > 0) {
+  console.warn("⚠️ Firebase configuration keys are missing in the environment:", missingKeys.join(", "));
+}
+
 // Initialize Firebase using compat API
 const app = firebase.initializeApp(firebaseConfig);
 export const auth = firebase.auth();

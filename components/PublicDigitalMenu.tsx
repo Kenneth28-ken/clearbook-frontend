@@ -20,12 +20,41 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
   const [menuTheme, setMenuTheme] = useState<MenuTheme>(MenuTheme.PASTEL);
   const [systemMode, setSystemMode] = useState<SystemMode>(SystemMode.RESTAURANT);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [orderStatus, setOrderStatus] = useState<'IDLE' | 'PLACING' | 'SUCCESS'>('IDLE');
   const [customerName, setCustomerName] = useState('');
   const [tableNumber, setTableNumber] = useState('');
+  const [showTablePrompt, setShowTablePrompt] = useState(false);
 
   useEffect(() => {
     if (!businessUid) return;
+    
+    // Check if Firebase is configured
+    if (!db || !db.app) {
+      setError("Firebase is not properly initialized. Check your configuration.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    // Timeout for loading
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn("Firestore menu load timed out for UID:", businessUid);
+        setError("The menu is taking too long to load. This can happen if the business hasn't set up their products yet or if there's a connection issue.");
+        setLoading(false);
+      }
+    }, 8000); // 8 second timeout
+
+    console.log("Starting menu fetch for business:", businessUid);
+
+    // Check URL for table number
+    const params = new URLSearchParams(window.location.search);
+    const table = params.get('table');
+    if (table) setTableNumber(table);
+    else if (systemMode === SystemMode.RESTAURANT) setShowTablePrompt(true);
 
     // Fetch Business Info
     const unsubConfig = db.collection("users").doc(businessUid).collection("config").doc("terminal")
@@ -38,19 +67,35 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
           if (data?.systemMode) setSystemMode(data.systemMode as SystemMode);
           if (data?.categories) setCategories(['All', ...data.categories]);
         }
+      }, (err) => {
+        console.error("Config fetch error:", err);
+        setError(`Failed to connect to business config: ${err.message}`);
+        setLoading(false);
       });
 
     // Fetch Products
     const unsubProducts = db.collection("users").doc(businessUid).collection("products")
       .onSnapshot((snapshot) => {
-        const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-        setProducts(fetched);
+        try {
+          const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+          setProducts(fetched);
+          setLoading(false);
+          clearTimeout(timeoutId);
+        } catch (err) {
+          console.error("Product mapping error:", err);
+          setError("Failed to parse menu data.");
+          setLoading(false);
+        }
+      }, (err) => {
+        console.error("Products fetch error:", err);
+        setError(`Could not load menu: ${err.message}`);
         setLoading(false);
       });
 
     return () => {
       unsubConfig();
       unsubProducts();
+      clearTimeout(timeoutId);
     };
   }, [businessUid]);
 
@@ -145,6 +190,26 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-10 text-center">
+        <div className="max-w-xs">
+          <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShoppingCart className="w-8 h-8" />
+          </div>
+          <h1 className="text-xl font-black text-gray-900 mb-2 uppercase">MENU ERROR</h1>
+          <p className="text-gray-500 text-sm mb-8">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-gray-800 transition-all active:scale-95"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const getProductColor = (product: Product) => {
     if (menuTheme === MenuTheme.WHITE) return 'bg-white';
     
@@ -179,10 +244,17 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-black tracking-tighter uppercase text-gray-900">{businessName}</h1>
-            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              Digital Menu Active
-            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                Digital Menu
+              </p>
+              {tableNumber && (
+                <span className="bg-gray-900 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest shadow-sm">
+                  Table {tableNumber}
+                </span>
+              )}
+            </div>
           </div>
           <div className="relative">
             <ShoppingCart className="w-6 h-6 text-gray-900" />
@@ -314,6 +386,50 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
                 <ChevronRight className="w-6 h-6" />
               </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Table Number Prompt */}
+      <AnimatePresence>
+        {showTablePrompt && !tableNumber && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-[3rem] p-10 w-full max-w-sm text-center shadow-2xl"
+            >
+              <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ShoppingCart className="w-10 h-10" />
+              </div>
+              <h2 className="text-2xl font-black uppercase tracking-tight mb-2">Welcome!</h2>
+              <p className="text-gray-500 font-medium mb-8">Please enter your table number to view the menu.</p>
+              
+              <div className="space-y-4">
+                <input 
+                  type="text" 
+                  placeholder="Enter Table Number"
+                  className="w-full bg-gray-50 border-2 border-transparent focus:border-blue-500 rounded-2xl p-5 text-center font-black text-2xl outline-none shadow-inner"
+                  value={tableNumber}
+                  onChange={(e) => setTableNumber(e.target.value)}
+                  autoFocus
+                />
+                <button 
+                  onClick={() => setShowTablePrompt(false)}
+                  disabled={!tableNumber}
+                  className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-sm transition-all shadow-xl ${
+                    tableNumber ? 'bg-gray-900 text-white active:scale-95 hover:bg-blue-600' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Confirm Table
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
