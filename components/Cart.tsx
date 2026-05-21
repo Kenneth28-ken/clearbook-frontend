@@ -60,7 +60,7 @@ const Cart: React.FC<CartProps> = ({
             ) : (
               <button 
                 onClick={onOpenServerSelect}
-                className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black rounded-lg hover:bg-indigo-700 transition-colors uppercase tracking-tight shadow-md"
+                className="px-3 py-1.5 bg-green-600 text-white text-[10px] font-black rounded-lg hover:bg-green-700 transition-colors uppercase tracking-tight shadow-md"
               >
                 Assign Server
               </button>
