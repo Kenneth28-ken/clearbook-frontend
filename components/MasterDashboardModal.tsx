@@ -21,31 +21,45 @@ interface MasterDashboardModalProps {
 const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, onImpersonate, currentImpersonatedUid, masterUid }) => {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchUsers = async () => {
     setIsRefreshing(true);
+    setError(null);
     try {
       // Fetch from primary registry
-      const primarySnap = await db.collection("pos_accounts").get();
-      const uList = primarySnap.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          email: data.email || 'No Email',
-          lastLogin: data.lastLogin ? (data.lastLogin.toDate ? data.lastLogin.toDate() : new Date(data.lastLogin)) : new Date(),
-          status: data.status || 'ACTIVE',
-          businessName: data.businessName || 'Unnamed Business',
-          menuEnabled: data.menuEnabled !== false // Default to true if not defined
-        } as UserRecord;
-      });
+      console.log("MasterDashboard: Fetching from pos_accounts...");
+      let uList: UserRecord[] = [];
+      try {
+        const primarySnap = await db.collection("pos_accounts").get();
+        console.log(`MasterDashboard: Found ${primarySnap.size} accounts in pos_accounts`);
+        uList = primarySnap.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            email: data.email || 'No Email',
+            lastLogin: data.lastLogin ? (data.lastLogin.toDate ? data.lastLogin.toDate() : new Date(data.lastLogin)) : new Date(),
+            status: data.status || 'ACTIVE',
+            businessName: data.businessName || 'Unnamed Business',
+            menuEnabled: data.menuEnabled !== false
+          } as UserRecord;
+        });
+      } catch (e: any) {
+        console.error("MasterDashboard: pos_accounts fetch failed:", e);
+        if (e.code === 'permission-denied') {
+          setError("PERMISSION DENIED: Master account does not have access to list pos_accounts. Please check Firestore security rules.");
+        }
+      }
 
       // Fetch from legacy registry
+      console.log("MasterDashboard: Fetching from users...");
       let legacyList: UserRecord[] = [];
       try {
         const legacySnap = await db.collection("users").get();
+        console.log(`MasterDashboard: Found ${legacySnap.size} accounts in users`);
         legacyList = legacySnap.docs.map(doc => {
           const data = doc.data();
           return {
@@ -57,8 +71,8 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
             menuEnabled: data.menuEnabled !== false
           } as UserRecord;
         });
-      } catch (e) {
-        console.warn("Legacy fetch failed:", e);
+      } catch (e: any) {
+        console.warn("MasterDashboard: users fetch failed:", e);
       }
 
       // Merge and filter
@@ -69,9 +83,15 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
         }
       });
 
-      setUsers(merged.filter(u => u.id !== masterUid));
-    } catch (err) {
+      const finalUsers = merged.filter(u => u.id !== masterUid);
+      setUsers(finalUsers);
+      
+      if (finalUsers.length === 0 && !error) {
+        console.warn("No users found in pos_accounts or users collections (matching Master criteria)");
+      }
+    } catch (err: any) {
       console.error("Fetch error:", err);
+      setError(err.message || "Failed to fetch users. System error.");
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -83,25 +103,71 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
     // Also set up a real-time listener for the primary registry
     const unsub = db.collection("pos_accounts").onSnapshot(() => {
       fetchUsers();
+    }, (err) => {
+      console.error("Snapshot error:", err);
+      setError("Real-time sync failed: " + err.message);
     });
     return () => unsub();
   }, [masterUid]);
 
   const handleStatusChange = async (uid: string, newStatus: 'ACTIVE' | 'RESTRICTED' | 'SHUTDOWN') => {
     try {
-      await db.collection("pos_accounts").doc(uid).update({ status: newStatus });
+      await db.collection("pos_accounts").doc(uid).set({ status: newStatus }, { merge: true });
+      fetchUsers();
     } catch (e) {
       console.error("Failed to update user status", e);
+      alert("Status update failed. You may not have permission to write to pos_accounts.");
     }
   };
 
   const handleMenuToggle = async (uid: string, currentState: boolean) => {
     try {
-      await db.collection("pos_accounts").doc(uid).update({ menuEnabled: !currentState });
-      // If no pos_account document exists (legacy), we might need to create/update it in 'users'
-      // but for now we prioritize pos_accounts
+      await db.collection("pos_accounts").doc(uid).set({ menuEnabled: !currentState }, { merge: true });
+      fetchUsers();
     } catch (e) {
       console.error("Failed to toggle menu status", e);
+      alert("Menu status update failed.");
+    }
+  };
+
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [newUserId, setNewUserId] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserBusiness, setNewUserBusiness] = useState('');
+
+  const [isSettingPin, setIsSettingPin] = useState<string | null>(null);
+  const [newManagerPin, setNewManagerPin] = useState('');
+
+  const handleCreateUser = async () => {
+    if (!newUserId || !newUserEmail) return;
+    try {
+      await db.collection("pos_accounts").doc(newUserId).set({
+        email: newUserEmail,
+        businessName: newUserBusiness || 'New Business',
+        status: 'ACTIVE',
+        lastLogin: firebase.firestore.Timestamp.now()
+      }, { merge: true });
+      setIsAddingUser(false);
+      setNewUserId('');
+      setNewUserEmail('');
+      setNewUserBusiness('');
+      fetchUsers();
+    } catch (e: any) {
+      alert("Failed to create user: " + e.message);
+    }
+  };
+
+  const handleUpdatePin = async (uid: string) => {
+    if (!newManagerPin) return;
+    try {
+      await db.collection("users").doc(uid).collection("config").doc("terminal").set({
+        managerOverridePin: newManagerPin
+      }, { merge: true });
+      setIsSettingPin(null);
+      setNewManagerPin('');
+      alert("Manager PIN updated for " + uid);
+    } catch (e: any) {
+      alert("Failed to update PIN: " + e.message);
     }
   };
 
@@ -124,23 +190,32 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
             </div>
             <div>
               <h2 className="text-3xl font-black uppercase tracking-tighter">Master Overload Control</h2>
-              <p className="text-amber-900 font-bold uppercase text-xs tracking-widest mt-1 flex items-center gap-2">
+              <p className="text-amber-900 font-bold uppercase text-[10px] tracking-widest mt-1 flex items-center gap-2">
                 <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
-                System Administrator Dashboard • {users.length} REGISTERED CUSTOMERS
+                ADMIN: {masterUid} • {users.length} REGISTERED CUSTOMERS
               </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <button 
+              onClick={() => setIsAddingUser(true)}
+              className="px-6 py-4 bg-amber-950 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
+              </svg>
+              Manual Registry
+            </button>
+            <button 
               onClick={fetchUsers} 
               disabled={isRefreshing}
-              className={`p-3 bg-amber-600 hover:bg-amber-700 rounded-full transition-all text-white ${isRefreshing ? 'animate-spin opacity-50' : ''}`}
+              className={`p-4 bg-amber-600 hover:bg-amber-700 rounded-2xl transition-all text-white ${isRefreshing ? 'animate-spin opacity-50' : ''}`}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <button onClick={onClose} className="p-3 bg-amber-600 hover:bg-amber-700 rounded-full transition-all text-white">
+            <button onClick={onClose} className="p-4 bg-amber-600 hover:bg-amber-700 rounded-2xl transition-all text-white">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -148,9 +223,9 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="p-6 bg-gray-50 border-b">
-          <div className="relative max-w-2xl mx-auto">
+        {/* Search Bar / Direct Entry */}
+        <div className="p-6 bg-gray-50 border-b flex gap-4">
+          <div className="relative flex-1">
             <input 
               type="text" 
               placeholder="Search customers by email or business name..."
@@ -162,6 +237,16 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
+          <div className="flex gap-2">
+             <input 
+               type="text" 
+               placeholder="Direct Impersonation (UID)..."
+               className="w-64 px-6 bg-amber-50 border-2 border-amber-100 rounded-2xl font-bold outline-none focus:border-amber-500 transition-all text-gray-900 shadow-sm text-xs"
+               onKeyDown={(e) => {
+                 if (e.key === 'Enter') onImpersonate((e.target as HTMLInputElement).value);
+               }}
+             />
+          </div>
         </div>
 
         {/* Content */}
@@ -169,6 +254,43 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
           {loading ? (
             <div className="h-full flex items-center justify-center">
               <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : error ? (
+            <div className="h-full flex flex-col items-center justify-center p-12 bg-white rounded-[3rem] border-4 border-red-50 text-center">
+              <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-6">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 uppercase mb-2">Registry Access Failed</h3>
+              <p className="text-gray-500 font-bold max-w-md">{error}</p>
+              <button 
+                onClick={fetchUsers}
+                className="mt-8 px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all"
+              >
+                Retry Connection
+              </button>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-12 bg-white rounded-[3rem] border-4 border-gray-50 text-center">
+              <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mb-6">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 uppercase mb-2">No Registered Customers</h3>
+              <p className="text-gray-500 font-bold max-w-md">The customer registry is currently empty or no matches were found for your search.</p>
+              
+              <div className="mt-8 p-6 bg-amber-50 rounded-2xl border-2 border-amber-100 max-w-lg">
+                <h4 className="text-amber-800 font-black uppercase text-xs mb-2">Diagnostic Assistance</h4>
+                <p className="text-amber-600 text-[10px] font-bold leading-relaxed">
+                  If you expect to see users here, check if they are registered in the <code className="bg-amber-100 px-1 rounded">pos_accounts</code> or <code className="bg-amber-100 px-1 rounded">users</code> collections. 
+                  You can use the <strong>Manual Registry</strong> button above to track a specific Firebase UID.
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <button onClick={fetchUsers} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase">Refresh Database</button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -222,6 +344,25 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
                     </button>
 
                     <button 
+                      onClick={() => handleStatusChange(u.id, 'ACTIVE')}
+                      className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${
+                        u.status === 'ACTIVE' ? 'bg-green-600 text-white border-green-600 shadow-md' : 'bg-white text-green-600 border-green-100 hover:border-green-200'
+                      }`}
+                    >
+                      {u.status === 'ACTIVE' ? 'ACTIVATED' : 'ACTIVATE ACCOUNT'}
+                    </button>
+
+                    <button 
+                      onClick={() => setIsSettingPin(u.id)}
+                      className="py-3 bg-amber-50 text-amber-700 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-100 transition-all border border-amber-200 flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                      SET PASSWORD
+                    </button>
+
+                    <button 
                       onClick={() => handleStatusChange(u.id, u.status === 'RESTRICTED' ? 'ACTIVE' : 'RESTRICTED')}
                       className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${
                         u.status === 'RESTRICTED' ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-orange-500 border-orange-100 hover:border-orange-200'
@@ -262,6 +403,60 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
              EXIT MASTER CONTROL
            </button>
         </div>
+
+        {/* Add User Modal */}
+        {isAddingUser && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[600] p-6 backdrop-blur-sm">
+            <div className="bg-white rounded-[3rem] p-10 w-full max-w-md shadow-2xl space-y-6">
+              <h3 className="text-2xl font-black uppercase tracking-tight text-center">Manual Registry</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">AUTH UID (From Firebase)</label>
+                  <input type="text" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-900 outline-none focus:border-amber-500" value={newUserId} onChange={(e) => setNewUserId(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Email Address</label>
+                  <input type="email" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-900 outline-none focus:border-amber-500" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Business Name (Optional)</label>
+                  <input type="text" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-900 outline-none focus:border-amber-500" value={newUserBusiness} onChange={(e) => setNewUserBusiness(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button onClick={() => setIsAddingUser(false)} className="flex-1 py-4 bg-gray-100 text-gray-500 font-black rounded-xl uppercase text-xs">Cancel</button>
+                <button onClick={handleCreateUser} className="flex-2 py-4 bg-amber-500 text-amber-950 font-black rounded-xl shadow-lg uppercase text-xs">Add to Registry</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Set PIN Modal */}
+        {isSettingPin && (
+           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[600] p-6 backdrop-blur-sm">
+             <div className="bg-white rounded-[3rem] p-10 w-full max-w-sm shadow-2xl space-y-6 text-center">
+               <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                 </svg>
+               </div>
+               <h3 className="text-xl font-black uppercase tracking-tight">Overwrite Access Password</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">This will update the manager override PIN for the account.</p>
+               <input 
+                 type="password" 
+                 maxLength={6}
+                 placeholder="••••••"
+                 className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black text-3xl text-center text-gray-900 outline-none focus:border-amber-500" 
+                 value={newManagerPin} 
+                 onChange={(e) => setNewManagerPin(e.target.value)} 
+               />
+               <div className="flex gap-4 pt-4">
+                 <button onClick={() => setIsSettingPin(null)} className="flex-1 py-4 bg-gray-100 text-gray-500 font-black rounded-xl uppercase text-xs tracking-widest">Cancel</button>
+                 <button onClick={() => handleUpdatePin(isSettingPin)} className="flex-2 py-4 bg-amber-600 text-white font-black rounded-xl shadow-lg uppercase text-xs tracking-widest">Update PIN</button>
+               </div>
+             </div>
+           </div>
+        )}
       </div>
     </div>
   );

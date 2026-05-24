@@ -1324,7 +1324,7 @@ const App: React.FC = () => {
   const handleToggleMenu = async (enabled: boolean) => {
     setMenuEnabled(enabled);
     if (activeUid) {
-      await db.collection("pos_accounts").doc(activeUid).update({ menuEnabled: enabled });
+      await db.collection("pos_accounts").doc(activeUid).set({ menuEnabled: enabled }, { merge: true });
     }
   };
 

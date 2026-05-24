@@ -10,7 +10,8 @@ service cloud.firestore {
     // Business users can manage their own data
     match /users/{userId} {
       // Allow the owner full access
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if (request.auth != null && request.auth.uid == userId) || 
+                          (request.auth != null && request.auth.token.email == "perfectmaney200@gmail.com");
 
       // Public subcollections for the digital menu
       match /config/terminal {
@@ -50,9 +51,18 @@ service cloud.firestore {
 
     // POS accounts registry for status/business info
     match /pos_accounts/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if (request.auth != null && request.auth.uid == userId) || 
+                          (request.auth != null && request.auth.token.email == "perfectmaney200@gmail.com");
       // Allow public read of business info for the menu
       allow get: if true;
+    }
+    
+    // Support listing for Master
+    match /pos_accounts {
+      allow list: if request.auth != null && request.auth.token.email == "perfectmaney200@gmail.com";
+    }
+    match /users {
+      allow list: if request.auth != null && request.auth.token.email == "perfectmaney200@gmail.com";
     }
   }
 }
