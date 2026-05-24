@@ -73,11 +73,22 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
         }
       }, (err: any) => {
         console.error("Config fetch error:", err);
-        const isPermissionError = err.message?.toLowerCase().includes("permission") || err.code === 'permission-denied';
-        setError(isPermissionError 
-          ? "Access Denied: Please ask the business owner to update their Firebase security rules for public menu access."
-          : `Failed to connect to business config: ${err.message}`);
-        setLoading(false);
+      });
+
+    // Check Master Enablement
+    const unsubAccount = db.collection("pos_accounts").doc(businessUid)
+      .onSnapshot((doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          if (data?.menuEnabled === false) {
+            setError("This digital menu has been deactivated by the administrator.");
+            setLoading(false);
+          }
+          if (data?.status === 'SHUTDOWN') {
+            setError("This account is currently inactive.");
+            setLoading(false);
+          }
+        }
       });
 
     // Fetch Products
@@ -104,6 +115,7 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
 
     return () => {
       unsubConfig();
+      unsubAccount();
       unsubProducts();
       clearTimeout(timeoutId);
     };

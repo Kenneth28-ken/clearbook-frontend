@@ -8,6 +8,7 @@ interface UserRecord {
   lastLogin: Date;
   status: 'ACTIVE' | 'RESTRICTED' | 'SHUTDOWN';
   businessName?: string;
+  menuEnabled?: boolean;
 }
 
 interface MasterDashboardModalProps {
@@ -36,7 +37,8 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
           email: data.email || 'No Email',
           lastLogin: data.lastLogin ? (data.lastLogin.toDate ? data.lastLogin.toDate() : new Date(data.lastLogin)) : new Date(),
           status: data.status || 'ACTIVE',
-          businessName: data.businessName || 'Unnamed Business'
+          businessName: data.businessName || 'Unnamed Business',
+          menuEnabled: data.menuEnabled !== false // Default to true if not defined
         } as UserRecord;
       });
 
@@ -51,7 +53,8 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
             email: data.email || 'No Email Registered',
             lastLogin: data.lastLogin ? (data.lastLogin.toDate ? data.lastLogin.toDate() : new Date(data.lastLogin)) : new Date(),
             status: data.status || 'ACTIVE',
-            businessName: data.businessName || 'Legacy Account'
+            businessName: data.businessName || 'Legacy Account',
+            menuEnabled: data.menuEnabled !== false
           } as UserRecord;
         });
       } catch (e) {
@@ -89,6 +92,16 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
       await db.collection("pos_accounts").doc(uid).update({ status: newStatus });
     } catch (e) {
       console.error("Failed to update user status", e);
+    }
+  };
+
+  const handleMenuToggle = async (uid: string, currentState: boolean) => {
+    try {
+      await db.collection("pos_accounts").doc(uid).update({ menuEnabled: !currentState });
+      // If no pos_account document exists (legacy), we might need to create/update it in 'users'
+      // but for now we prioritize pos_accounts
+    } catch (e) {
+      console.error("Failed to toggle menu status", e);
     }
   };
 
@@ -184,6 +197,18 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mt-2">
+                    <button 
+                      onClick={() => handleMenuToggle(u.id, u.menuEnabled !== false)}
+                      className={`col-span-2 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 flex items-center justify-center gap-2 ${
+                        u.menuEnabled === false ? 'bg-zinc-100 text-zinc-400 border-zinc-200' : 'bg-green-600 text-white border-green-600 shadow-md'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                      </svg>
+                      {u.menuEnabled === false ? 'QR MENU DISABLED' : 'QR MENU ACTIVE'}
+                    </button>
+
                     <button 
                       onClick={() => onImpersonate(u.id)}
                       className={`col-span-2 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 ${

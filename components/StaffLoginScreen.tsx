@@ -23,7 +23,7 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
       const ctx = new AudioContextClass();
       const now = ctx.currentTime;
       
-      const playNote = (freq: number, start: number, duration: number, volume: number = 0.08) => {
+      const playNote = (freq: number, start: number, duration: number, volume: number = 0.4) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
@@ -38,12 +38,12 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
       };
 
       // Professional 3-second Arpeggio (C Major 9)
-      playNote(261.63, now, 3.0, 0.08);       // C4
-      playNote(329.63, now + 0.1, 2.9, 0.06);  // E4
-      playNote(392.00, now + 0.2, 2.8, 0.06);  // G4
-      playNote(493.88, now + 0.3, 2.7, 0.05);  // B4
-      playNote(523.25, now + 0.4, 2.6, 0.05);  // C5
-      playNote(587.33, now + 0.5, 2.5, 0.04);  // D5
+      playNote(261.63, now, 3.0, 0.4);       // C4
+      playNote(329.63, now + 0.1, 2.9, 0.3);  // E4
+      playNote(392.00, now + 0.2, 2.8, 0.3);  // G4
+      playNote(493.88, now + 0.3, 2.7, 0.25); // B4
+      playNote(523.25, now + 0.4, 2.6, 0.25); // C5
+      playNote(587.33, now + 0.5, 2.5, 0.2);  // D5
     } catch (e) {
       console.warn("Audio Context blocked by browser or failed.");
     }

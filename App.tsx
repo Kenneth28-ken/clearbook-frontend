@@ -111,7 +111,9 @@ const sendPurchaseWebhook = async (
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.LOGIN);
-  const [systemMode, setSystemMode] = useState<SystemMode>(SystemMode.RESTAURANT);
+  const [systemMode, setSystemMode] = useState<SystemMode>(() => {
+    return (localStorage.getItem('cb_system_mode') as SystemMode) || SystemMode.RESTAURANT;
+  });
   const [user, setUser] = useState<firebase.User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -221,6 +223,7 @@ const App: React.FC = () => {
   const [showPrismaticAudit, setShowPrismaticAudit] = useState(false);
   const [impersonatedUid, setImpersonatedUid] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<'ACTIVE' | 'RESTRICTED' | 'SHUTDOWN'>('ACTIVE');
+  const [menuEnabled, setMenuEnabled] = useState<boolean>(true);
   const [editingMobileOrder, setEditingMobileOrder] = useState<MobileOrder | null>(null);
   const [isManagerOverride, setIsManagerOverride] = useState(false);
   
@@ -324,6 +327,7 @@ const App: React.FC = () => {
     try {
       const context = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = context.createOscillator();
+      const secondOscillator = context.createOscillator();
       const gainNode = context.createGain();
       
       if (type === 'SUCCESS') {
@@ -331,22 +335,34 @@ const App: React.FC = () => {
         oscillator.frequency.setValueAtTime(880, context.currentTime);
         oscillator.frequency.exponentialRampToValueAtTime(1320, context.currentTime + 0.1);
       } else if (type === 'NOTIFICATION') {
-        oscillator.type = 'triangle';
-        oscillator.frequency.setValueAtTime(523.25, context.currentTime); // C5
-        oscillator.frequency.exponentialRampToValueAtTime(659.25, context.currentTime + 0.15); // E5
+        // More intense "Arriving" sound
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(587.33, context.currentTime); // D5
+        oscillator.frequency.exponentialRampToValueAtTime(880.00, context.currentTime + 0.2); // A5
+
+        secondOscillator.type = 'triangle';
+        secondOscillator.frequency.setValueAtTime(440, context.currentTime + 0.1);
+        secondOscillator.frequency.exponentialRampToValueAtTime(659.25, context.currentTime + 0.3);
       } else {
         oscillator.type = 'sawtooth';
         oscillator.frequency.setValueAtTime(220, context.currentTime);
       }
 
-      gainNode.gain.setValueAtTime(0.1, context.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+      // Increased gain for higher volume
+      gainNode.gain.setValueAtTime(0.9, context.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.6);
       
       oscillator.connect(gainNode);
+      if (type === 'NOTIFICATION') {
+        secondOscillator.connect(gainNode);
+        secondOscillator.start();
+        secondOscillator.stop(context.currentTime + 0.6);
+      }
+      
       gainNode.connect(context.destination);
       
       oscillator.start();
-      oscillator.stop(context.currentTime + 0.3);
+      oscillator.stop(context.currentTime + 0.6);
     } catch (e) { console.warn("Audio Context blocked or failed."); }
   };
 
@@ -394,10 +410,11 @@ const App: React.FC = () => {
       localStorage.setItem('cb_business_phone', businessPhone);
       localStorage.setItem('cb_expenses', safeJsonStringify(expenses));
       localStorage.setItem('cb_menu_theme', menuTheme);
+      localStorage.setItem('cb_system_mode', systemMode);
     } catch (e) {
       console.error("Failed to save state to localStorage:", e);
     }
-  }, [staffList, attendantsList, products, history, customers, tokens, whatsappTokens, cart, activeTableLabel, currencySymbol, whatsappApi, whatsappMethod, whatsappCompatibilityMode, thermalProxy, mobileOrders, printerType, firstTimeMessage, businessName, businessAddress, businessPhone, expenses]);
+  }, [staffList, attendantsList, products, history, customers, tokens, whatsappTokens, cart, activeTableLabel, currencySymbol, whatsappApi, whatsappMethod, whatsappCompatibilityMode, thermalProxy, mobileOrders, printerType, firstTimeMessage, businessName, businessAddress, businessPhone, expenses, menuTheme, systemMode]);
 
   useEffect(() => {
     if (!activeUid) return;
@@ -515,7 +532,9 @@ const App: React.FC = () => {
     const unsubStatus = db.collection("pos_accounts").doc(activeUid)
       .onSnapshot((snap) => {
         if (snap.exists) {
-          setAccountStatus(snap.data()?.status || 'ACTIVE');
+          const data = snap.data();
+          setAccountStatus(data?.status || 'ACTIVE');
+          if (data?.menuEnabled !== undefined) setMenuEnabled(data.menuEnabled !== false);
         }
       });
     return () => { unsubConfig(); unsubStaff(); unsubAttendants(); unsubProducts(); unsubHistory(); unsubExpenses(); unsubCustomers(); unsubMobile(); unsubStatus(); };
@@ -1302,6 +1321,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleToggleMenu = async (enabled: boolean) => {
+    setMenuEnabled(enabled);
+    if (activeUid) {
+      await db.collection("pos_accounts").doc(activeUid).update({ menuEnabled: enabled });
+    }
+  };
+
   const handleLogout = () => { auth.signOut(); setCurrentStaff(null); setView(AppView.LOGIN); };
 
   if (authLoading) return <div className="h-screen bg-gray-900 flex items-center justify-center"><div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -1497,6 +1523,8 @@ const App: React.FC = () => {
         menuTheme={menuTheme}
         onSetMenuTheme={handleUpdateMenuTheme}
         isMaster={isMasterMode}
+        menuEnabled={menuEnabled}
+        onToggleMenu={handleToggleMenu}
       />}
       {showInventory && <InventoryModal products={products} history={history} expenses={expenses} onAddExpense={handleAddExpense} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onDeleteProduct={handleDeleteProduct} onClose={() => setShowInventory(false)} isMaster={isMasterMode} isManagerOverride={isManagerOverride} onSetManagerOverride={setIsManagerOverride} />}
       {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} categories={categories} />}

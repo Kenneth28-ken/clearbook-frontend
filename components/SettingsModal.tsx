@@ -40,6 +40,8 @@ interface SettingsModalProps {
   menuTheme?: MenuTheme;
   onSetMenuTheme: (theme: MenuTheme) => void;
   isMaster?: boolean;
+  menuEnabled?: boolean;
+  onToggleMenu?: (enabled: boolean) => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -76,7 +78,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   activeUid,
   menuTheme = MenuTheme.PASTEL,
   onSetMenuTheme,
-  isMaster = false
+  isMaster = false,
+  menuEnabled = true,
+  onToggleMenu
 }) => {
   const [newPass, setNewPass] = useState('');
   const [isTesting, setIsTesting] = useState(false);
@@ -296,6 +300,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             
             <div className="flex flex-col items-center gap-6">
+               {isMaster && (
+                 <div className="w-full p-4 bg-white border-2 border-amber-200 rounded-2xl flex items-center justify-between shadow-sm">
+                   <div>
+                     <p className="text-[10px] font-black text-amber-900 uppercase">Master Menu Activation</p>
+                     <p className="text-[9px] text-amber-700 font-bold uppercase">Deactivate to lock customer out</p>
+                   </div>
+                   <button 
+                     onClick={() => onToggleMenu?.(!menuEnabled)}
+                     className={`w-14 h-7 rounded-full p-1 transition-all ${menuEnabled ? 'bg-green-600' : 'bg-red-500'}`}
+                   >
+                     <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform ${menuEnabled ? 'translate-x-7' : 'translate-x-0'}`}></div>
+                   </button>
+                 </div>
+               )}
                <div className="p-4 bg-white rounded-[2rem] shadow-2xl border-4 border-white shrink-0">
                   <QRCodeSVG 
                     value={`${window.location.origin}/menu/${activeUid}`}
