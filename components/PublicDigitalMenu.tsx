@@ -27,11 +27,15 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
   const [showTablePrompt, setShowTablePrompt] = useState(false);
 
   useEffect(() => {
-    if (!businessUid) return;
+    if (!businessUid) {
+      setError("No Business ID provided in the URL.");
+      setLoading(false);
+      return;
+    }
     
     // Check if Firebase is configured
     if (!db || !db.app) {
-      setError("Firebase is not properly initialized. Check your configuration.");
+      setError("System configuration error: Firebase is not initialized.");
       setLoading(false);
       return;
     }
@@ -41,12 +45,12 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
 
     // Timeout for loading
     const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.warn("Firestore menu load timed out for UID:", businessUid);
-        setError("The menu is taking too long to load. This can happen if the business hasn't set up their products yet or if there's a connection issue.");
-        setLoading(false);
-      }
-    }, 8000); // 8 second timeout
+      // Use the latest value of loading from the current render cycle
+      // If we are still loading, it's likely a connection or permission issue
+      console.warn("Firestore menu load timed out for UID:", businessUid);
+      setError("The menu is taking too long to load. This can happen if the business hasn't set up their products yet or if there's a connectivity issue.");
+      setLoading(false);
+    }, 12000); // Increased to 12 seconds
 
     console.log("Starting menu fetch for business:", businessUid);
 
@@ -67,9 +71,12 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
           if (data?.systemMode) setSystemMode(data.systemMode as SystemMode);
           if (data?.categories) setCategories(['All', ...data.categories]);
         }
-      }, (err) => {
+      }, (err: any) => {
         console.error("Config fetch error:", err);
-        setError(`Failed to connect to business config: ${err.message}`);
+        const isPermissionError = err.message?.toLowerCase().includes("permission") || err.code === 'permission-denied';
+        setError(isPermissionError 
+          ? "Access Denied: Please ask the business owner to update their Firebase security rules for public menu access."
+          : `Failed to connect to business config: ${err.message}`);
         setLoading(false);
       });
 
@@ -86,9 +93,12 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
           setError("Failed to parse menu data.");
           setLoading(false);
         }
-      }, (err) => {
+      }, (err: any) => {
         console.error("Products fetch error:", err);
-        setError(`Could not load menu: ${err.message}`);
+        const isPermissionError = err.message?.toLowerCase().includes("permission") || err.code === 'permission-denied';
+        setError(isPermissionError 
+          ? "Access Denied: Menu products cannot be loaded. Security rules check failed."
+          : `Could not load menu: ${err.message}`);
         setLoading(false);
       });
 
@@ -159,9 +169,14 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
         status: 'PENDING'
       });
       
+      // Haptic feedback if available
+      if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate([100, 50, 100]);
+      }
+      
       setOrderStatus('SUCCESS');
       setCart([]);
-      setTimeout(() => setOrderStatus('IDLE'), 5000);
+      setTimeout(() => setOrderStatus('IDLE'), 8000); // 8 seconds visibility for success
     } catch (e) {
       console.error("Order failed:", e);
       setOrderStatus('IDLE');
@@ -193,18 +208,25 @@ const PublicDigitalMenu: React.FC<PublicDigitalMenuProps> = ({ businessUid }) =>
   if (error) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-10 text-center">
-        <div className="max-w-xs">
-          <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShoppingCart className="w-8 h-8" />
+        <div className="max-w-sm">
+          <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShoppingCart className="w-10 h-10" />
           </div>
-          <h1 className="text-xl font-black text-gray-900 mb-2 uppercase">MENU ERROR</h1>
-          <p className="text-gray-500 text-sm mb-8">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-gray-800 transition-all active:scale-95"
-          >
-            Try Again
-          </button>
+          <h1 className="text-2xl font-black text-gray-900 mb-2 uppercase">Menu Unavailable</h1>
+          <p className="text-gray-500 text-sm mb-8 leading-relaxed">
+            {error}
+            <br />
+            <span className="text-[10px] text-gray-400 mt-4 block font-mono">Ref: {businessUid}</span>
+          </p>
+          <div className="space-y-3">
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-gray-800 transition-all active:scale-95"
+            >
+              Try to Reconnect
+            </button>
+            <p className="text-[10px] text-gray-400 font-medium">Please ensure the business owner has deployed their digital menu rules.</p>
+          </div>
         </div>
       </div>
     );

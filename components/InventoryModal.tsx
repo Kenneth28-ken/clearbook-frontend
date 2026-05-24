@@ -50,17 +50,17 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
   const [expenseDescription, setExpenseDescription] = useState('');
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
-  const MASTER_KEY = import.meta.env.VITE_MASTER_KEY;
-
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.trim().toLowerCase() === MASTER_KEY.toLowerCase()) {
+    // In a real environment, you should check against a secure PIN or Firestore role.
+    // For now, only allowing owner (isMaster) access or existing override.
+    if (isMaster) {
       setIsAuthorized(true);
       if (onSetManagerOverride) onSetManagerOverride(true);
       setShowPassPrompt(false);
       setError('');
     } else {
-      setError('Unauthorized Access Code');
+      setError('Contact Manager for Access');
       setPassword('');
     }
   };

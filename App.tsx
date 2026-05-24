@@ -320,19 +320,33 @@ const App: React.FC = () => {
   const isMasterMode = useMemo(() => user?.email === MASTER_EMAIL, [user]);
   const isTerminalLocked = tokens <= 0 || (accountStatus === 'RESTRICTED' && !isMasterMode);
 
-  const playAlertSound = () => {
+  const playAlertSound = (type: 'NOTIFICATION' | 'ERROR' | 'SUCCESS' = 'NOTIFICATION') => {
     try {
       const context = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = context.createOscillator();
       const gainNode = context.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(880, context.currentTime); 
+      
+      if (type === 'SUCCESS') {
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, context.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1320, context.currentTime + 0.1);
+      } else if (type === 'NOTIFICATION') {
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(523.25, context.currentTime); // C5
+        oscillator.frequency.exponentialRampToValueAtTime(659.25, context.currentTime + 0.15); // E5
+      } else {
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(220, context.currentTime);
+      }
+
       gainNode.gain.setValueAtTime(0.1, context.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+      
       oscillator.connect(gainNode);
       gainNode.connect(context.destination);
+      
       oscillator.start();
-      oscillator.stop(context.currentTime + 0.1);
+      oscillator.stop(context.currentTime + 0.3);
     } catch (e) { console.warn("Audio Context blocked or failed."); }
   };
 
@@ -469,18 +483,34 @@ const App: React.FC = () => {
             id: d.id,
             timestamp: parseDate(d.data()?.timestamp)
           } as MobileOrder));
+          
+          let hasNew = false;
+          // Determine if we should trigger notifications (don't alert on the very first load of existing orders)
+          const isInitialLoad = knownOrderIds.current.size === 0 && mobileOrders.length === 0;
+
           incoming.forEach(order => {
             if (!knownOrderIds.current.has(order.id)) {
               knownOrderIds.current.add(order.id);
-              setNewOrderNotification(`Incoming order from ${order.customerName || 'Table ' + (order.tableNumber || '?')}`);
-              setTimeout(() => setNewOrderNotification(null), 6000);
+              if (!isInitialLoad) {
+                hasNew = true;
+                setNewOrderNotification(`Incoming order from ${order.customerName || 'Table ' + (order.tableNumber || '?')}`);
+                setTimeout(() => setNewOrderNotification(null), 10000); // 10 seconds visibility
+              }
             }
           });
+
+          if (hasNew) {
+            playAlertSound('NOTIFICATION');
+            console.log("New mobile order received:", incoming[0]);
+          }
+          
           setMobileOrders(incoming);
         } else {
           setMobileOrders([]);
           knownOrderIds.current.clear();
         }
+      }, (err) => {
+        console.error("Mobile orders subscription error:", err);
       });
     const unsubStatus = db.collection("pos_accounts").doc(activeUid)
       .onSnapshot((snap) => {
@@ -1498,7 +1528,7 @@ const App: React.FC = () => {
         />
       )}
       {showServerSelect && <ServerModal attendants={attendantsList} onSelect={setCurrentServer} onClose={() => setShowServerSelect(false)} />}
-      {showTokenRecharge && <TokenRechargeModal onRecharge={handleTokenRecharge} onClose={() => setShowTokenRecharge(false)} currencySymbol={currencySymbol} />}
+      {showTokenRecharge && <TokenRechargeModal onRecharge={handleTokenRecharge} onClose={() => setShowTokenRecharge(false)} currencySymbol={currencySymbol} isMaster={isMasterMode} />}
       {showCRM && <CRMModal customers={customers} onClose={() => setShowCRM(false)} whatsappTokens={whatsappTokens} onUpdateName={(p, n) => handleSaveCustomer(p, n)} onImportCustomers={handleImportCustomers} />}
       {showStaffManagement && <StaffManagementModal staffList={staffList} attendantsList={attendantsList} onClose={() => setShowStaffManagement(false)} onUpdateStaff={handleUpdateStaff} onAddStaff={handleAddStaff} onRemoveStaff={handleRemoveStaff} onUpdateAttendant={handleUpdateAttendant} onAddAttendant={handleAddAttendant} onRemoveAttendant={handleRemoveAttendant} />}
       {showQRCode && <QRCodeModal onClose={() => setShowQRCode(false)} activeUid={activeUid} />}

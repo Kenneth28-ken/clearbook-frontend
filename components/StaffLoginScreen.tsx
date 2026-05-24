@@ -16,9 +16,6 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
   const [showMasterBypass, setShowMasterBypass] = useState(false);
   const [masterPass, setMasterPass] = useState('');
 
-  const MASTER_KEY = import.meta.env.VITE_MASTER_KEY;
-
-  // Synthesized Startup Chime (Pleasant Harmonious Arpeggio)
   const playStartupSound = () => {
     try {
       const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
@@ -75,7 +72,7 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
 
   const handleMasterBypass = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedStaff && masterPass.trim().toLowerCase() === MASTER_KEY.toLowerCase()) {
+    if (selectedStaff && isMaster) {
       playStartupSound();
       onStaffAuthenticated(selectedStaff);
     } else {

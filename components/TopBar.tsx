@@ -91,14 +91,26 @@ const TopBar: React.FC<TopBarProps> = ({
             <span className="text-[10px] font-black uppercase whitespace-nowrap">Get QR Code</span>
           </button>
 
-          {!isTerminalLocked && systemMode === SystemMode.RESTAURANT && (
+          {!isTerminalLocked && (
             <>
-              <button onClick={onOpenServerHub} className="p-2.5 bg-gray-700 hover:bg-indigo-600 rounded-xl text-indigo-400 hover:text-white transition-all shadow-sm" title="Server Hub">
+              <button 
+                onClick={onOpenServerHub} 
+                className={`p-2.5 rounded-xl transition-all shadow-sm ${systemMode === SystemMode.RESTAURANT ? 'bg-gray-700 hover:bg-indigo-600 text-indigo-400 hover:text-white' : 'hidden'}`} 
+                title="Server Hub"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
               </button>
-              <button onClick={onOpenMobileOrders} className="p-2.5 relative bg-gray-700 hover:bg-orange-600 rounded-xl text-orange-400 hover:text-gray-900 transition-all shadow-sm" title="Mobile Queue">
+              <button 
+                onClick={onOpenMobileOrders} 
+                className={`p-2.5 relative rounded-xl transition-all shadow-sm bg-gray-700 hover:bg-orange-600 text-orange-400 hover:text-gray-900`} 
+                title="Mobile Queue"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                {mobileOrderCount > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce border-2 border-gray-800">{mobileOrderCount}</span>}
+                {mobileOrderCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce border-2 border-gray-800">
+                    {mobileOrderCount}
+                  </span>
+                )}
               </button>
             </>
           )}
