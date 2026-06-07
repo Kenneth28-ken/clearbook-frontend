@@ -134,9 +134,13 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
   const [newUserId, setNewUserId] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserBusiness, setNewUserBusiness] = useState('');
+  const [newUserPin, setNewUserPin] = useState('');
 
   const [isSettingPin, setIsSettingPin] = useState<string | null>(null);
   const [newManagerPin, setNewManagerPin] = useState('');
+
+  const [isEditingBusiness, setIsEditingBusiness] = useState<string | null>(null);
+  const [newBusinessName, setNewBusinessName] = useState('');
 
   const handleCreateUser = async () => {
     if (!newUserId || !newUserEmail) return;
@@ -147,13 +151,35 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
         status: 'ACTIVE',
         lastLogin: firebase.firestore.Timestamp.now()
       }, { merge: true });
+
+      if (newUserPin) {
+        await db.collection("users").doc(newUserId).collection("config").doc("terminal").set({
+          managerOverridePin: newUserPin
+        }, { merge: true });
+      }
+
       setIsAddingUser(false);
       setNewUserId('');
       setNewUserEmail('');
       setNewUserBusiness('');
+      setNewUserPin('');
       fetchUsers();
     } catch (e: any) {
       alert("Failed to create user: " + e.message);
+    }
+  };
+
+  const handleUpdateBusinessName = async (uid: string) => {
+    if (!newBusinessName) return;
+    try {
+      await db.collection("pos_accounts").doc(uid).set({
+        businessName: newBusinessName
+      }, { merge: true });
+      setIsEditingBusiness(null);
+      setNewBusinessName('');
+      fetchUsers();
+    } catch (e: any) {
+      alert("Failed to update business name: " + e.message);
     }
   };
 
@@ -299,7 +325,42 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
                       <div className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">UID: {u.id.substring(0, 8)}...</div>
-                      <h3 className="font-black text-gray-900 text-xl leading-tight uppercase truncate">{u.businessName}</h3>
+                      {isEditingBusiness === u.id ? (
+                        <div className="flex gap-2">
+                           <input 
+                             type="text" 
+                             className="flex-1 p-2 bg-gray-50 border-2 border-amber-300 rounded-lg text-sm font-black uppercase"
+                             value={newBusinessName}
+                             onChange={(e) => setNewBusinessName(e.target.value)}
+                             autoFocus
+                           />
+                           <button 
+                             onClick={() => handleUpdateBusinessName(u.id)}
+                             className="p-2 bg-green-600 text-white rounded-lg"
+                           >
+                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
+                           </button>
+                           <button 
+                             onClick={() => setIsEditingBusiness(null)}
+                             className="p-2 bg-red-600 text-white rounded-lg"
+                           >
+                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"/></svg>
+                           </button>
+                        </div>
+                      ) : (
+                        <h3 
+                          className="font-black text-gray-900 text-xl leading-tight uppercase truncate flex items-center gap-2 group/title cursor-pointer"
+                          onClick={() => {
+                            setIsEditingBusiness(u.id);
+                            setNewBusinessName(u.businessName || '');
+                          }}
+                        >
+                          {u.businessName}
+                          <svg className="w-4 h-4 opacity-0 group-hover/title:opacity-100 text-amber-500 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </h3>
+                      )}
                       <p className="text-xs font-bold text-gray-400 truncate">{u.email}</p>
                     </div>
                     <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase ${
@@ -421,6 +482,10 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Business Name (Optional)</label>
                   <input type="text" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-900 outline-none focus:border-amber-500" value={newUserBusiness} onChange={(e) => setNewUserBusiness(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Manager PIN (6 Digits)</label>
+                  <input type="password" maxLength={6} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-900 outline-none focus:border-amber-500 text-center text-xl tracking-widest" value={newUserPin} onChange={(e) => setNewUserPin(e.target.value)} placeholder="••••••" />
                 </div>
               </div>
               <div className="flex gap-4 pt-4">

@@ -17,6 +17,7 @@ interface InventoryModalProps {
   isTerminalLocked?: boolean;
   isMaster?: boolean;
   isManagerOverride?: boolean;
+  managerOverridePin?: string;
   onSetManagerOverride?: (val: boolean) => void;
 }
 
@@ -35,6 +36,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
   isTerminalLocked = false,
   isMaster = false,
   isManagerOverride = false,
+  managerOverridePin = '',
   onSetManagerOverride
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,15 +54,18 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real environment, you should check against a secure PIN or Firestore role.
-    // For now, only allowing owner (isMaster) access or existing override.
-    if (isMaster) {
+    
+    const isOwnerOrMaster = isMaster;
+    const isCorrectPin = managerOverridePin && password === managerOverridePin;
+
+    if (isOwnerOrMaster || isCorrectPin) {
       setIsAuthorized(true);
       if (onSetManagerOverride) onSetManagerOverride(true);
       setShowPassPrompt(false);
       setError('');
+      setPassword('');
     } else {
-      setError('Contact Manager for Access');
+      setError(managerOverridePin ? 'Invalid Management PIN' : 'Contact Manager for Access');
       setPassword('');
     }
   };

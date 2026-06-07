@@ -226,6 +226,7 @@ const App: React.FC = () => {
   const [menuEnabled, setMenuEnabled] = useState<boolean>(true);
   const [editingMobileOrder, setEditingMobileOrder] = useState<MobileOrder | null>(null);
   const [isManagerOverride, setIsManagerOverride] = useState(false);
+  const [managerOverridePin, setManagerOverridePin] = useState<string>('');
   
   const knownOrderIds = useRef<Set<string>>(new Set());
   const [newOrderNotification, setNewOrderNotification] = useState<string | null>(null);
@@ -426,12 +427,14 @@ const App: React.FC = () => {
             if (doc.data()?.couponRate !== undefined) setCouponRate(doc.data()?.couponRate);
             if (doc.data()?.categories) setCategories(doc.data()?.categories);
             if (doc.data()?.menuTheme) setMenuTheme(doc.data()?.menuTheme as MenuTheme);
+            if (doc.data()?.managerOverridePin) setManagerOverridePin(doc.data()?.managerOverridePin);
         } else {
             setTokens(0);
             setWhatsappTokens(0);
             setCouponRate(5);
             setCategories(CATEGORIES);
             setMenuTheme(MenuTheme.PASTEL);
+            setManagerOverridePin('');
         }
       });
     const unsubStaff = db.collection("users").doc(activeUid).collection("staff")
@@ -1526,7 +1529,7 @@ const App: React.FC = () => {
         menuEnabled={menuEnabled}
         onToggleMenu={handleToggleMenu}
       />}
-      {showInventory && <InventoryModal products={products} history={history} expenses={expenses} onAddExpense={handleAddExpense} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onDeleteProduct={handleDeleteProduct} onClose={() => setShowInventory(false)} isMaster={isMasterMode} isManagerOverride={isManagerOverride} onSetManagerOverride={setIsManagerOverride} />}
+      {showInventory && <InventoryModal products={products} history={history} expenses={expenses} onAddExpense={handleAddExpense} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onDeleteProduct={handleDeleteProduct} onClose={() => setShowInventory(false)} isMaster={isMasterMode} isManagerOverride={isManagerOverride} managerOverridePin={managerOverridePin} onSetManagerOverride={setIsManagerOverride} />}
       {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} categories={categories} />}
       {editingProduct && <EditProductModal product={editingProduct} onUpdate={(p) => { handleUpdateProduct(p); setEditingProduct(null); }} onClose={() => setEditingProduct(null)} currencySymbol={currencySymbol} categories={categories} />}
       {showModifier && <ModifierModal product={showModifier} currencySymbol={currencySymbol} onConfirm={(mods) => { addToCart(showModifier, mods); setShowModifier(null); }} onClose={() => setShowModifier(null)} />}
@@ -1556,7 +1559,7 @@ const App: React.FC = () => {
         />
       )}
       {showServerSelect && <ServerModal attendants={attendantsList} onSelect={setCurrentServer} onClose={() => setShowServerSelect(false)} />}
-      {showTokenRecharge && <TokenRechargeModal onRecharge={handleTokenRecharge} onClose={() => setShowTokenRecharge(false)} currencySymbol={currencySymbol} isMaster={isMasterMode} />}
+      {showTokenRecharge && <TokenRechargeModal onRecharge={handleTokenRecharge} onClose={() => setShowTokenRecharge(false)} currencySymbol={currencySymbol} isMaster={isMasterMode} managerOverridePin={managerOverridePin} />}
       {showCRM && <CRMModal customers={customers} onClose={() => setShowCRM(false)} whatsappTokens={whatsappTokens} onUpdateName={(p, n) => handleSaveCustomer(p, n)} onImportCustomers={handleImportCustomers} />}
       {showStaffManagement && <StaffManagementModal staffList={staffList} attendantsList={attendantsList} onClose={() => setShowStaffManagement(false)} onUpdateStaff={handleUpdateStaff} onAddStaff={handleAddStaff} onRemoveStaff={handleRemoveStaff} onUpdateAttendant={handleUpdateAttendant} onAddAttendant={handleAddAttendant} onRemoveAttendant={handleRemoveAttendant} />}
       {showQRCode && <QRCodeModal onClose={() => setShowQRCode(false)} activeUid={activeUid} />}

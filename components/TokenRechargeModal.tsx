@@ -6,9 +6,10 @@ interface TokenRechargeModalProps {
   onRecharge: (amount: number, type: 'SALES' | 'WHATSAPP') => void;
   currencySymbol: string;
   isMaster?: boolean;
+  managerOverridePin?: string;
 }
 
-const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRecharge, currencySymbol, isMaster = false }) => {
+const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRecharge, currencySymbol, isMaster = false, managerOverridePin = '' }) => {
   const [masterKey, setMasterKey] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(isMaster);
   const [rechargeAmount, setRechargeAmount] = useState(100);
@@ -21,11 +22,13 @@ const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRech
 
   const handleAuthorize = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isMaster) {
+    const isCorrectPin = managerOverridePin && masterKey === managerOverridePin;
+
+    if (isMaster || isCorrectPin) {
       setIsAuthorized(true);
       setError('');
     } else {
-      setError('Contact Owner for Authorization');
+      setError(managerOverridePin ? 'Invalid Management PIN' : 'Contact Owner for Authorization');
       setMasterKey('');
     }
   };

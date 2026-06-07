@@ -2,67 +2,51 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Default deny
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper function for Master Admin access
+    function isMaster() {
+      return request.auth != null && request.auth.token.email == 'perfectmaney200@gmail.com';
     }
 
-    // Business users can manage their own data
+    // 1. Business Data (Products, History, Staff, etc.)
     match /users/{userId} {
-      // Allow the owner full access
-      allow read, write: if (request.auth != null && request.auth.uid == userId) || 
-                          (request.auth != null && request.auth.token.email == "perfectmaney200@gmail.com");
-
-      // Public subcollections for the digital menu
-      match /config/terminal {
-        allow read: if true; 
+      // Owner or Master Admin full access
+      allow read, write: if isMaster() || (request.auth != null && request.auth.uid == userId);
+      
+      match /{allPaths=**} {
+        allow read, write: if isMaster() || (request.auth != null && request.auth.uid == userId);
       }
 
+      // PUBLIC ACCESS: Required for Digital Menu (QR Code)
+      match /config/terminal {
+        allow read: if true;
+      }
       match /products/{productId} {
         allow read: if true;
       }
-
       match /mobile_orders/{orderId} {
-        // Owner can manage orders
-        allow read, delete: if request.auth != null && request.auth.uid == userId;
-        // Customers can place orders
-        allow create: if true;
-        // Customers can read their own order status if they have the ID (optional, but keep it simple)
-        allow get: if true;
-      }
-      
-      // Other collections remains restricted to owner
-      match /staff/{staffId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /attendants/{attendantId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /history/{txId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /expenses/{expenseId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /customers/{phone} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        // Customers can place orders and check status
+        allow create, get: if true;
       }
     }
 
-    // POS accounts registry for status/business info
-    match /pos_accounts/{userId} {
-      allow read, write: if (request.auth != null && request.auth.uid == userId) || 
-                          (request.auth != null && request.auth.token.email == "perfectmaney200@gmail.com");
-      // Allow public read of business info for the menu
+    // 2. Master Registry / POS Accounts
+    match /pos_accounts/{accountId} {
+      allow read, write: if isMaster() || (request.auth != null && request.auth.uid == accountId);
+      
+      // Public get for business details in the digital menu
       allow get: if true;
+
+      match /{allPaths=**} {
+        allow read, write: if isMaster() || (request.auth != null && request.auth.uid == accountId);
+      }
     }
-    
-    // Support listing for Master
+
+    // LISTING: Allow Master to see the registry
     match /pos_accounts {
-      allow list: if request.auth != null && request.auth.token.email == "perfectmaney200@gmail.com";
+      allow list: if isMaster();
     }
     match /users {
-      allow list: if request.auth != null && request.auth.token.email == "perfectmaney200@gmail.com";
+      allow list: if isMaster();
     }
   }
 }
