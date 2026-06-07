@@ -34,7 +34,7 @@ import ProfitHistoryModal from './components/ProfitHistoryModal';
 import ExpensesModal from './components/ExpensesModal';
 import CustomerDisplayView from './components/CustomerDisplayView';
 
-const MASTER_EMAIL = 'perfectmaney200@gmail.com';
+const MASTER_EMAIL = import.meta.env.VITE_MASTER_EMAIL || 'perfectmaney200@gmail.com';
 const STOCK_THRESHOLD = 10;
 
 const parseDate = (dateVal: any): Date => {
@@ -323,7 +323,8 @@ const App: React.FC = () => {
 
   const isMasterMode = useMemo(() => {
     if (!user?.email) return false;
-    return user.email.toLowerCase().trim() === MASTER_EMAIL.toLowerCase().trim();
+    const master = (import.meta.env.VITE_MASTER_EMAIL || 'perfectmaney200@gmail.com').toLowerCase().trim();
+    return user.email.toLowerCase().trim() === master;
   }, [user]);
   const isTerminalLocked = tokens <= 0 || (accountStatus === 'RESTRICTED' && !isMasterMode);
 
@@ -1531,6 +1532,7 @@ const App: React.FC = () => {
         isMaster={isMasterMode}
         menuEnabled={menuEnabled}
         onToggleMenu={handleToggleMenu}
+        onOpenMasterDashboard={() => setShowMasterDashboard(true)}
       />}
       {showInventory && <InventoryModal products={products} history={history} expenses={expenses} onAddExpense={handleAddExpense} currencySymbol={currencySymbol} onUpdateStock={(id, s) => handleUpdateProductField(id, 'stock', s)} onEditProduct={setEditingProduct} onUpdateProductField={handleUpdateProductField} onAddNewProduct={() => setShowAddProduct(true)} onDeleteProduct={handleDeleteProduct} onClose={() => setShowInventory(false)} isMaster={isMasterMode} isManagerOverride={isManagerOverride} managerOverridePin={managerOverridePin} onSetManagerOverride={setIsManagerOverride} />}
       {showAddProduct && <AddProductModal onAdd={(p) => { handleAddProduct(p); setShowAddProduct(false); }} onClose={() => setShowAddProduct(false)} currencySymbol={currencySymbol} categories={categories} />}

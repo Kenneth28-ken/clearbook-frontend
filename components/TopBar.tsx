@@ -65,7 +65,7 @@ const TopBar: React.FC<TopBarProps> = ({
            </button>
            
            {isMaster && (
-             <button onClick={onOpenMasterDashboard} className="px-3 py-1 bg-amber-400 text-amber-950 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg animate-pulse hover:bg-amber-300 transition-colors">Master Overload</button>
+             <button onClick={onOpenMasterDashboard} className="px-4 py-2 bg-amber-400 text-amber-950 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg animate-pulse hover:bg-amber-300 transition-colors border-2 border-amber-500/20">Open Master Dashboard</button>
            )}
         </div>
       </div>
