@@ -484,8 +484,8 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
                   <input type="text" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-900 outline-none focus:border-amber-500" value={newUserBusiness} onChange={(e) => setNewUserBusiness(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Manager PIN (6 Digits)</label>
-                  <input type="password" maxLength={6} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-900 outline-none focus:border-amber-500 text-center text-xl tracking-widest" value={newUserPin} onChange={(e) => setNewUserPin(e.target.value)} placeholder="••••••" />
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Manager PIN (4 Digits)</label>
+                  <input type="password" maxLength={4} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-gray-900 outline-none focus:border-amber-500 text-center text-xl tracking-widest" value={newUserPin} onChange={(e) => setNewUserPin(e.target.value)} placeholder="••••" />
                 </div>
               </div>
               <div className="flex gap-4 pt-4">
@@ -509,8 +509,8 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">This will update the manager override PIN for the account.</p>
                <input 
                  type="password" 
-                 maxLength={6}
-                 placeholder="••••••"
+                 maxLength={4}
+                 placeholder="••••"
                  className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black text-3xl text-center text-gray-900 outline-none focus:border-amber-500" 
                  value={newManagerPin} 
                  onChange={(e) => setNewManagerPin(e.target.value)} 

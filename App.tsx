@@ -34,7 +34,7 @@ import ProfitHistoryModal from './components/ProfitHistoryModal';
 import ExpensesModal from './components/ExpensesModal';
 import CustomerDisplayView from './components/CustomerDisplayView';
 
-const MASTER_EMAIL = import.meta.env.VITE_MASTER_EMAIL;
+const MASTER_EMAIL = 'perfectmaney200@gmail.com';
 const STOCK_THRESHOLD = 10;
 
 const parseDate = (dateVal: any): Date => {
@@ -321,7 +321,10 @@ const App: React.FC = () => {
     return { revenue, cost, profit };
   }, [history]);
 
-  const isMasterMode = useMemo(() => user?.email === MASTER_EMAIL, [user]);
+  const isMasterMode = useMemo(() => {
+    if (!user?.email) return false;
+    return user.email.toLowerCase().trim() === MASTER_EMAIL.toLowerCase().trim();
+  }, [user]);
   const isTerminalLocked = tokens <= 0 || (accountStatus === 'RESTRICTED' && !isMasterMode);
 
   const playAlertSound = (type: 'NOTIFICATION' | 'ERROR' | 'SUCCESS' = 'NOTIFICATION') => {
@@ -1336,7 +1339,7 @@ const App: React.FC = () => {
   if (authLoading) return <div className="h-screen bg-gray-900 flex items-center justify-center"><div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
   
   if (view === AppView.LOGIN) return <LoginScreen setSystemMode={setSystemMode} onPasswordRecovery={() => {}} />;
-  if (view === AppView.STAFF_LOGIN) return <StaffLoginScreen staffList={staffList} onStaffAuthenticated={(s) => { setCurrentStaff(s); setView(AppView.SALES); }} onLogoutManager={handleLogout} />;
+  if (view === AppView.STAFF_LOGIN) return <StaffLoginScreen staffList={staffList} onStaffAuthenticated={(s) => { setCurrentStaff(s); setView(AppView.SALES); }} onLogoutManager={handleLogout} isMaster={isMasterMode} managerOverridePin={managerOverridePin} businessName={businessName} onOpenMasterDashboard={() => setShowMasterDashboard(true)} />;
   if (view === AppView.CUSTOMER_MENU) return <CustomerDisplayView isTerminalLocked={isTerminalLocked} />;
 
   if (accountStatus === 'SHUTDOWN' && !isMasterMode) {

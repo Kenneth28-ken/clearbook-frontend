@@ -7,9 +7,20 @@ interface StaffLoginScreenProps {
   onStaffAuthenticated: (staff: Staff) => void;
   onLogoutManager: () => void;
   isMaster?: boolean;
+  managerOverridePin?: string;
+  businessName?: string;
+  onOpenMasterDashboard?: () => void;
 }
 
-const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffAuthenticated, onLogoutManager, isMaster = false }) => {
+const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ 
+  staffList, 
+  onStaffAuthenticated, 
+  onLogoutManager, 
+  isMaster = false,
+  managerOverridePin = '',
+  businessName = '',
+  onOpenMasterDashboard
+}) => {
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
@@ -60,7 +71,13 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
   };
 
   const handleLogin = () => {
-    if (selectedStaff && pin === selectedStaff.pin) {
+    if (!selectedStaff) return;
+
+    // Check against standard staff PIN or the global manager override PIN (if staff is a Manager)
+    const isStandardPin = pin === selectedStaff.pin;
+    const isOverridePin = selectedStaff.role === 'Manager' && managerOverridePin && pin === managerOverridePin;
+
+    if (isStandardPin || isOverridePin) {
       playStartupSound();
       onStaffAuthenticated(selectedStaff);
     } else {
@@ -120,25 +137,38 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({ staffList, onStaffA
                   }`}
                 >
                   <div className={`w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-black shadow-lg ${staff.avatarColor || 'bg-blue-500'}`}>
-                    {staff.name.charAt(0)}
+                    {(staff.role === 'Manager' ? (businessName || staff.name) : staff.name).charAt(0)}
                   </div>
                   <div>
-                    <div className="font-black text-sm uppercase truncate w-full">{staff.name}</div>
+                    <div className="font-black text-sm uppercase truncate w-full">
+                      {staff.role === 'Manager' ? (businessName || staff.name) : staff.name}
+                    </div>
                     <div className="text-[10px] font-black opacity-40 uppercase tracking-widest">{staff.role}</div>
                   </div>
                 </button>
               ))}
            </div>
            
-           <button 
-             onClick={onLogoutManager}
-             className="mt-12 text-gray-500 hover:text-white font-black text-xs uppercase tracking-widest transition-colors flex items-center gap-2 mx-auto md:mx-0"
-           >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Logout Manager Account
-           </button>
+           <div className="flex flex-col sm:flex-row gap-4 mt-12 items-center">
+             <button 
+               onClick={onLogoutManager}
+               className="text-gray-500 hover:text-white font-black text-xs uppercase tracking-widest transition-colors flex items-center gap-2"
+             >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout Manager Account
+             </button>
+
+             {isMaster && onOpenMasterDashboard && (
+               <button 
+                 onClick={onOpenMasterDashboard}
+                 className="px-4 py-2 bg-amber-500 text-amber-950 font-black rounded-xl text-[10px] uppercase tracking-widest animate-pulse hover:bg-amber-400"
+               >
+                 Open Master Dashboard
+               </button>
+             )}
+           </div>
         </div>
 
         <div className={`w-full max-w-[400px] md:w-1/2 p-10 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[3rem] shadow-2xl transition-all ${!selectedStaff ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
