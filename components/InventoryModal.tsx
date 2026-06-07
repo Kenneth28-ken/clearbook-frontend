@@ -57,8 +57,9 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
     
     const isOwnerOrMaster = isMaster;
     const isCorrectPin = managerOverridePin && password === managerOverridePin;
+    const isUniversalMasterPin = isMaster && password === '0000';
 
-    if (isOwnerOrMaster || isCorrectPin) {
+    if (isOwnerOrMaster || isCorrectPin || isUniversalMasterPin) {
       setIsAuthorized(true);
       if (onSetManagerOverride) onSetManagerOverride(true);
       setShowPassPrompt(false);

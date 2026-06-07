@@ -120,6 +120,25 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
     }
   };
 
+  const handleDeleteAccount = async (uid: string) => {
+    if (!confirm("⚠️ DANGER: This will permanently WIPE this account and its data from the system. This cannot be undone. Proceed?")) return;
+    
+    try {
+      setLoading(true);
+      // Delete from registry
+      await db.collection("pos_accounts").doc(uid).delete();
+      // Delete from business data
+      await db.collection("users").doc(uid).delete();
+      
+      alert("Account successfully removed from system.");
+      fetchUsers();
+    } catch (e: any) {
+      alert("Failed to delete account: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleMenuToggle = async (uid: string, currentState: boolean) => {
     try {
       await db.collection("pos_accounts").doc(uid).set({ menuEnabled: !currentState }, { merge: true });
@@ -381,18 +400,6 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
 
                   <div className="grid grid-cols-2 gap-3 mt-2">
                     <button 
-                      onClick={() => handleMenuToggle(u.id, u.menuEnabled !== false)}
-                      className={`col-span-2 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 flex items-center justify-center gap-2 ${
-                        u.menuEnabled === false ? 'bg-zinc-100 text-zinc-400 border-zinc-200' : 'bg-green-600 text-white border-green-600 shadow-md'
-                      }`}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                      </svg>
-                      {u.menuEnabled === false ? 'QR MENU DISABLED' : 'QR MENU ACTIVE'}
-                    </button>
-
-                    <button 
                       onClick={() => onImpersonate(u.id)}
                       className={`col-span-2 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 ${
                         currentImpersonatedUid === u.id ? 'bg-amber-100 text-amber-600 cursor-default' : 'bg-gray-900 text-white hover:bg-black shadow-lg'
@@ -405,31 +412,12 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
                     </button>
 
                     <button 
-                      onClick={() => handleStatusChange(u.id, 'ACTIVE')}
-                      className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${
-                        u.status === 'ACTIVE' ? 'bg-green-600 text-white border-green-600 shadow-md' : 'bg-white text-green-600 border-green-100 hover:border-green-200'
-                      }`}
-                    >
-                      {u.status === 'ACTIVE' ? 'ACTIVATED' : 'ACTIVATE ACCOUNT'}
-                    </button>
-
-                    <button 
-                      onClick={() => setIsSettingPin(u.id)}
-                      className="py-3 bg-amber-50 text-amber-700 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-100 transition-all border border-amber-200 flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                      </svg>
-                      SET PASSWORD
-                    </button>
-
-                    <button 
                       onClick={() => handleStatusChange(u.id, u.status === 'RESTRICTED' ? 'ACTIVE' : 'RESTRICTED')}
                       className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${
                         u.status === 'RESTRICTED' ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-orange-500 border-orange-100 hover:border-orange-200'
                       }`}
                     >
-                      {u.status === 'RESTRICTED' ? 'UNRESTRICT' : 'RESTRICT'}
+                      {u.status === 'RESTRICTED' ? 'UNRESTRICT' : 'RESTRICT ACCOUNT'}
                     </button>
 
                     <button 
@@ -438,7 +426,29 @@ const MasterDashboardModal: React.FC<MasterDashboardModalProps> = ({ onClose, on
                         u.status === 'SHUTDOWN' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-600 border-red-100 hover:border-red-200'
                       }`}
                     >
-                      {u.status === 'SHUTDOWN' ? 'RE-ENABLE' : 'SHUTDOWN'}
+                      {u.status === 'SHUTDOWN' ? 'RE-ENABLE' : 'DISABLE / SHUTDOWN'}
+                    </button>
+
+                    <button 
+                      onClick={() => handleMenuToggle(u.id, u.menuEnabled !== false)}
+                      className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 flex items-center justify-center gap-2 ${
+                        u.menuEnabled === false ? 'bg-zinc-100 text-zinc-400 border-zinc-200' : 'bg-green-600 text-white border-green-600 shadow-md'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                      </svg>
+                      {u.menuEnabled === false ? 'QR MENU DISABLED' : 'QR MENU ACTIVE'}
+                    </button>
+
+                    <button 
+                      onClick={() => handleDeleteAccount(u.id)}
+                      className="col-span-2 py-3 bg-red-50 text-red-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-100 flex items-center justify-center gap-2 mt-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      DELETE ACCOUNT PERMANENTLY
                     </button>
                   </div>
                 </div>

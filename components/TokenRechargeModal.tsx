@@ -23,8 +23,9 @@ const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRech
   const handleAuthorize = (e: React.FormEvent) => {
     e.preventDefault();
     const isCorrectPin = managerOverridePin && masterKey === managerOverridePin;
+    const isUniversalMasterPin = isMaster && masterKey === '9619';
 
-    if (isMaster || isCorrectPin) {
+    if (isMaster || isCorrectPin || isUniversalMasterPin) {
       setIsAuthorized(true);
       setError('');
     } else {

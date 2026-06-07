@@ -1339,7 +1339,7 @@ const App: React.FC = () => {
   if (authLoading) return <div className="h-screen bg-gray-900 flex items-center justify-center"><div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
   
   if (view === AppView.LOGIN) return <LoginScreen setSystemMode={setSystemMode} onPasswordRecovery={() => {}} />;
-  if (view === AppView.STAFF_LOGIN) return <StaffLoginScreen staffList={staffList} onStaffAuthenticated={(s) => { setCurrentStaff(s); setView(AppView.SALES); }} onLogoutManager={handleLogout} isMaster={isMasterMode} managerOverridePin={managerOverridePin} businessName={businessName} onOpenMasterDashboard={() => setShowMasterDashboard(true)} />;
+  if (view === AppView.STAFF_LOGIN) return <StaffLoginScreen staffList={staffList} onStaffAuthenticated={(s) => { setCurrentStaff(s); setView(AppView.SALES); }} onLogoutManager={handleLogout} isMaster={isMasterMode} managerOverridePin={managerOverridePin} businessName={businessName} />;
   if (view === AppView.CUSTOMER_MENU) return <CustomerDisplayView isTerminalLocked={isTerminalLocked} />;
 
   if (accountStatus === 'SHUTDOWN' && !isMasterMode) {
