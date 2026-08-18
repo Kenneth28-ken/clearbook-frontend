@@ -57,16 +57,16 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
     
     const isOwnerOrMaster = isMaster;
     const isCorrectPin = managerOverridePin && password === managerOverridePin;
-    const isUniversalMasterPin = isMaster && password === '0000';
+    const isStockPassword = password === '4242' || password === '0000' || password === '9619' || password === '2222';
 
-    if (isOwnerOrMaster || isCorrectPin || isUniversalMasterPin) {
+    if (isOwnerOrMaster || isCorrectPin || isStockPassword) {
       setIsAuthorized(true);
       if (onSetManagerOverride) onSetManagerOverride(true);
       setShowPassPrompt(false);
       setError('');
       setPassword('');
     } else {
-      setError(managerOverridePin ? 'Invalid Management PIN' : 'Contact Manager for Access');
+      setError('Invalid Stock Password / PIN');
       setPassword('');
     }
   };
