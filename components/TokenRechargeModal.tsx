@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { isValidTokenPin } from '../config';
 
 interface TokenRechargeModalProps {
   onClose: () => void;
@@ -22,10 +23,7 @@ const TokenRechargeModal: React.FC<TokenRechargeModalProps> = ({ onClose, onRech
 
   const handleAuthorize = (e: React.FormEvent) => {
     e.preventDefault();
-    const isCorrectPin = managerOverridePin && masterKey === managerOverridePin;
-    const isUniversalMasterPin = masterKey === '9619' || masterKey === '4242' || masterKey === '0000';
-
-    if (isMaster || isCorrectPin || isUniversalMasterPin) {
+    if (isMaster || isValidTokenPin(masterKey, managerOverridePin)) {
       setIsAuthorized(true);
       setError('');
     } else {

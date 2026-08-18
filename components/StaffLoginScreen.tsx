@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Staff } from '../types';
+import { isValidStaffPin } from '../config';
 
 interface StaffLoginScreenProps {
   staffList: Staff[];
@@ -71,12 +72,7 @@ const StaffLoginScreen: React.FC<StaffLoginScreenProps> = ({
   const handleLogin = () => {
     if (!selectedStaff) return;
 
-    // Check against standard staff PIN, global manager override PIN, or universal override PINs
-    const isStandardPin = pin === selectedStaff.pin;
-    const isOverridePin = selectedStaff.role === 'Manager' && managerOverridePin && pin === managerOverridePin;
-    const isUniversalMasterPin = pin === '0000' || pin === '4242' || pin === '9619';
-
-    if (isStandardPin || isOverridePin || isUniversalMasterPin) {
+    if (isValidStaffPin(pin, selectedStaff.pin, managerOverridePin)) {
       playStartupSound();
       onStaffAuthenticated(selectedStaff);
     } else {

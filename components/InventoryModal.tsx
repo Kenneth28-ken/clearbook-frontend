@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Product, TransactionRecord, Expense } from '../types';
+import { isValidStockPin } from '../config';
 
 interface InventoryModalProps {
   products: Product[];
@@ -56,10 +57,9 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
     e.preventDefault();
     
     const isOwnerOrMaster = isMaster;
-    const isCorrectPin = managerOverridePin && password === managerOverridePin;
-    const isStockPassword = password === '4242' || password === '0000' || password === '9619' || password === '2222';
+    const isAuthorizedPin = isValidStockPin(password, managerOverridePin);
 
-    if (isOwnerOrMaster || isCorrectPin || isStockPassword) {
+    if (isOwnerOrMaster || isAuthorizedPin) {
       setIsAuthorized(true);
       if (onSetManagerOverride) onSetManagerOverride(true);
       setShowPassPrompt(false);

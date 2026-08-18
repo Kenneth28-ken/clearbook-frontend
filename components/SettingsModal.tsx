@@ -158,16 +158,37 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       const key = localStorage.key(i);
       if (key && key.startsWith('cb_')) {
         const val = localStorage.getItem(key);
-        backupData[key] = val ? JSON.parse(val) : null;
+        if (val) {
+          try {
+            backupData[key] = JSON.parse(val);
+          } catch (e) {
+            backupData[key] = val;
+          }
+        } else {
+          backupData[key] = null;
+        }
       }
     }
     
     const safeJsonStringify = (data: any) => {
       const seen = new WeakSet();
       return JSON.stringify(data, (key, value) => {
+        if (typeof value === "function" || typeof value === "symbol") return undefined;
         if (typeof value === "object" && value !== null) {
-          if (seen.has(value)) return;
-          seen.add(value);
+          if (
+            (typeof Node !== 'undefined' && value instanceof Node) ||
+            (typeof Element !== 'undefined' && value instanceof Element) ||
+            (typeof window !== 'undefined' && value === window) ||
+            Boolean(value.nativeEvent || value.target || value.preventDefault)
+          ) {
+            return undefined;
+          }
+          if (seen.has(value)) return undefined;
+          try {
+            seen.add(value);
+          } catch (e) {
+            return undefined;
+          }
         }
         return value;
       }, 2);

@@ -33,8 +33,8 @@ import MasterDashboardModal from './components/MasterDashboardModal';
 import ProfitHistoryModal from './components/ProfitHistoryModal';
 import ExpensesModal from './components/ExpensesModal';
 import CustomerDisplayView from './components/CustomerDisplayView';
+import { CONFIG } from './config';
 
-const MASTER_EMAIL = import.meta.env.VITE_MASTER_EMAIL || 'perfectmaney200@gmail.com';
 const STOCK_THRESHOLD = 10;
 
 const parseDate = (dateVal: any): Date => {
@@ -48,9 +48,26 @@ const safeJsonStringify = (obj: any) => {
   const getCircularReplacer = () => {
     const seen = new WeakSet();
     return (key: string, value: any) => {
+      if (typeof value === "function" || typeof value === "symbol") {
+        return undefined;
+      }
       if (typeof value === "object" && value !== null) {
-        if (seen.has(value)) return;
-        seen.add(value);
+        if (
+          (typeof Node !== 'undefined' && value instanceof Node) ||
+          (typeof Element !== 'undefined' && value instanceof Element) ||
+          (typeof window !== 'undefined' && value === window) ||
+          Boolean(value.nativeEvent || value.target || value.preventDefault || value._reactName)
+        ) {
+          return undefined;
+        }
+        if (seen.has(value)) {
+          return undefined;
+        }
+        try {
+          seen.add(value);
+        } catch (e) {
+          return undefined;
+        }
       }
       return value;
     };
@@ -59,17 +76,18 @@ const safeJsonStringify = (obj: any) => {
     return JSON.stringify(obj, getCircularReplacer());
   } catch (e) {
     console.warn("safeJsonStringify failed:", e);
-    return "{}";
+    return Array.isArray(obj) ? "[]" : "{}";
   }
 };
 
 const sanitize = (obj: any) => {
   if (!obj || typeof obj !== 'object') return obj;
   try {
-    return JSON.parse(safeJsonStringify(obj));
+    const jsonStr = safeJsonStringify(obj);
+    return JSON.parse(jsonStr);
   } catch (e) {
     console.error("Sanitize failed:", e);
-    return {};
+    return Array.isArray(obj) ? [] : {};
   }
 };
 
@@ -323,8 +341,7 @@ const App: React.FC = () => {
 
   const isMasterMode = useMemo(() => {
     if (!user?.email) return false;
-    const master = (import.meta.env.VITE_MASTER_EMAIL || 'perfectmaney200@gmail.com').toLowerCase().trim();
-    return user.email.toLowerCase().trim() === master;
+    return user.email.toLowerCase().trim() === CONFIG.MASTER_EMAIL;
   }, [user]);
   const isTerminalLocked = tokens <= 0 || (accountStatus === 'RESTRICTED' && !isMasterMode);
 

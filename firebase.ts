@@ -26,9 +26,10 @@ const app = firebase.initializeApp(firebaseConfig);
 export const auth = firebase.auth();
 export const db = firebase.firestore();
 
-// Use long polling for better connectivity in some environments
+// Enable auto-detect long polling and ignore undefined properties for robust offline/online resilience
 db.settings({
-  experimentalForceLongPolling: true
+  experimentalAutoDetectLongPolling: true,
+  ignoreUndefinedProperties: true
 });
 
 // Enable offline persistence
